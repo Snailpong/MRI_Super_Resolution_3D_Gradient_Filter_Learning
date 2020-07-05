@@ -1,4 +1,5 @@
 import os
+import glob
 import numpy as np
 import cv2
 import cupy as cp
@@ -18,30 +19,17 @@ Q = cp.zeros((Q_total, 8, filter_volume, filter_volume))
 V = cp.zeros((Q_total, 8, filter_volume, 1))
 h = np.zeros((Q_total, 8, filter_volume))
 
-dataDir="./train"
-dataLRDir="./train_low"
+dataDir="./train/*"
+dataLRDir="./train_low/*"
 
-fileName = 'T1w_acpc_dc_restore_brain_100307.nii.gz'
+#fileName = 'T1w_acpc_dc_restore_brain_100307.nii.gz'
 
-fileList = [dataDir + '/' + fileName]
-fileLRList = [dataLRDir + '/' + fileName]
-
-"""
-fileList = []
-fileLRList = []
-for parent,dirnames,filenames in os.walk(dataDir):
-    for filename in filenames:
-        fileList.append(os.path.join(parent, filename))
-
-for parent,dirnames,filenames in os.walk(dataLRDir):
-    for filename in filenames:
-        fileLRList.append(os.path.join(parent, filename))
-"""
-
+fileList = [file for file in glob.glob(dataDir) if file.endswith(".nii.gz")]
+fileLRList = [file for file in glob.glob(dataLRDir) if file.endswith(".nii.gz")]
 
 for idx, file in enumerate(fileList):
-    print("HashMap of %s"%file)
-    # mat = cv2.imread(file)
+    print(idx+1, "/", len(fileList), "\t", file)
+
     mat_file = nib.load(file)
     mat = np.array(mat_file.dataobj)
 
@@ -59,7 +47,7 @@ for idx, file in enumerate(fileList):
     xRange = range(x_use[0] + filter_half, x_use[1] - filter_half)
     yRange = range(y_use[0] + filter_half, y_use[1] - filter_half)
     zRange = range(z_use[0] + filter_half, z_use[1] - filter_half)
-    #zRange = range(125, 131)
+    #zRange = range(125, 130)
 
     LR = cp.array(LR)
     
@@ -113,7 +101,7 @@ np.save("./Q", Q)
 np.save("./V", V)
 
 
-print("Computing H...")
+print("\nComputing H...")
 # Set the train step
 for t in range(8):
     for j in range(Q_total):
@@ -123,4 +111,4 @@ for t in range(8):
         #h[j,t] = sparse.linalg.cg(Q[j,t],V[j,t])[0]
 
 print("Train is off")
-np.save("./lowR4", h)
+np.save("./filter_array/lowR4", h)
