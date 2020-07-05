@@ -1,0 +1,14 @@
+__pycache__/
+train/
+train_low/
+*.npy
+*.nii
+*.gz
+check_time.py
+cupyfunc.py
+*.png
+hashTable_original.py
+numba_example.py
+train_numba.py
+train_original.py
+transpose.py
