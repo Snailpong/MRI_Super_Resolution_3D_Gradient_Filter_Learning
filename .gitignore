@@ -11,4 +11,5 @@ hashTable_original.py
 numba_example.py
 train_numba.py
 train_original.py
+train_numpy.py
 transpose.py
