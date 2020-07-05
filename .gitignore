@@ -1,6 +1,4 @@
 __pycache__/
-train/
-train_low/
 *.npy
 *.nii
 *.gz

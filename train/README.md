@@ -1,0 +1,1 @@
+Put your high resolution(original) NIfTI file to train
