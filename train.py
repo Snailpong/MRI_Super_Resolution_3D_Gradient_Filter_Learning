@@ -11,18 +11,16 @@ import matplotlib.pyplot as plt
 #from scipy import sparse
 
 from hashTable import hashTable, hashTable_cupy
-from cropBlack import cropBlack
+from getMask import getMask
 from filterVariable import *
 
 # Construct an empty matrix Q, V uses the corresponding LR and HR, h is the filter, three hashmaps are Angle, Strength, Coherence, t
-Q = cp.zeros((Q_total, 8, filter_volume, filter_volume))
-V = cp.zeros((Q_total, 8, filter_volume, 1))
-h = np.zeros((Q_total, 8, filter_volume))
+Q = cp.zeros((Q_total, filter_volume, filter_volume))
+V = cp.zeros((Q_total, filter_volume, 1))
+h = np.zeros((Q_total, filter_volume))
 
 dataDir="./train/*"
 dataLRDir="./train_low/*"
-
-#fileName = 'T1w_acpc_dc_restore_brain_100307.nii.gz'
 
 fileList = [file for file in glob.glob(dataDir) if file.endswith(".nii.gz")]
 fileLRList = [file for file in glob.glob(dataLRDir) if file.endswith(".nii.gz")]
@@ -37,17 +35,11 @@ for idx, file in enumerate(fileList):
     HR = mat / np.max(mat)
     HR = cp.array(HR)
 
+    points = getMask(file, HR, filter_half)
+
     mat_file2 = np.array(nib.load(fileLRList[idx]).dataobj)
     LR = mat_file2 / np.max(mat)
     [Lgx, Lgy, Lgz] = np.gradient(LR)
-
-    [x_use, y_use, z_use] = cropBlack(LR)
-    print("x: ", x_use, "y: ", y_use, "z: ", z_use)
-
-    xRange = range(x_use[0] + filter_half, x_use[1] - filter_half)
-    yRange = range(y_use[0] + filter_half, y_use[1] - filter_half)
-    zRange = range(z_use[0] + filter_half, z_use[1] - filter_half)
-    #zRange = range(125, 130)
 
     LR = cp.array(LR)
     
@@ -55,42 +47,36 @@ for idx, file in enumerate(fileList):
 
     tT = cp.zeros((Q_total))
 
-    # Set the train map
     # Iterate over each pixel
-    for xP in xRange:
-        for yP in yRange:
-
-            print(xP - xRange[0], "/", xRange[-1] - xRange[0], '\t',
-                yP - yRange[0], "/", yRange[-1] - yRange[0], end='\r', flush=True)
-
-            for zP in zRange:
-                # Take patch
-                patch = LR[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
-                        zP - filter_half : zP + (filter_half + 1)]
-                gx = Lgx[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
-                        zP - filter_half : zP + (filter_half + 1)]
-                gy = Lgy[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
-                        zP - filter_half : zP + (filter_half + 1)]
-                gz = Lgz[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
+    point_size = len(points)
+    for idxp, [xP, yP, zP] in enumerate(points):
+        print(idxp, "/", point_size, end='\r')
+        try:
+            # Take patch
+            patch = LR[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
                     zP - filter_half : zP + (filter_half + 1)]
+            gx = Lgx[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
+                    zP - filter_half : zP + (filter_half + 1)]
+            gy = Lgy[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
+                    zP - filter_half : zP + (filter_half + 1)]
+            gz = Lgz[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
+                zP - filter_half : zP + (filter_half + 1)]
 
-                # Computational characteristics
-                [angle_p, angle_t, strength, coherence] = hashTable([gx, gy, gz], Qangle_p, Qangle_t, Qstrength, Qcoherence)
+            # Computational characteristics
+            [angle_p, angle_t, strength, coherence] = hashTable([gx, gy, gz], Qangle_p, Qangle_t, Qstrength, Qcoherence)
 
-                # Compressed vector space
-                j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
-                A = patch.reshape(1, -1)
-                x = HR[xP][yP][zP]
+            # Compressed vector space
+            j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
+            A = patch.reshape(1, -1)
+            x = HR[xP][yP][zP]
 
-                tT[j] += 1
+            tT[j] += 1
 
-                # Calculate pixel type
-                t = (xP % 2) * 4 + (yP % 2) * 2 + zP % 2
-                
-
-                # Save the corresponding HashMap
-                Q[j, t] += A * A.T
-                V[j, t] += A.T * x
+            # Save the corresponding HashMap
+            Q[j] += A * A.T
+            V[j] += A.T * x
+        except:
+            pass
 
     #print(tT)
 
@@ -103,12 +89,12 @@ np.save("./V", V)
 
 print("\nComputing H...")
 # Set the train step
-for t in range(8):
-    for j in range(Q_total):
-        print(t, "/", 8, "\t", j, "/", Q_total, end='\r', flush=True)
-        # Train 8 * 24 * 3 * 3 filters for each pixel type and image feature
-        h[j, t] = cg(Q[j, t], V[j, t])[0]
-        #h[j,t] = sparse.linalg.cg(Q[j,t],V[j,t])[0]
+
+for j in range(Q_total):
+    print(j, "/", Q_total, end='\r', flush=True)
+    # Train 8 * 24 * 3 * 3 filters for each pixel type and image feature
+    h[j] = cg(Q[j], V[j])[0]
+    #h[j,t] = sparse.linalg.cg(Q[j,t],V[j,t])[0]
 
 print("Train is off")
 np.save("./filter_array/lowR4", h)

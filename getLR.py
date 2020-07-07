@@ -5,6 +5,8 @@ import nibabel as nib
 from PIL import Image
 import sys
 import matplotlib.pyplot as plt
+import pathlib
+
 sys.path.append('../')
 
 def modcrop(im,modulo):
@@ -18,22 +20,28 @@ def modcrop(im,modulo):
         out = im[0:size0, 0:size1, 0:size2]
     return out
 
-inputDir = './test'
-outputDir = './test_low'
+inputDir = '.\\train'
+outputDir = '.\\train_low'
+#inputDir = pathlib.Path('./train')
+#outputDir = pathlib.Path('./train_low')
 
 if not os.path.exists(outputDir):
     os.makedirs(outputDir)
 
+#files = inputDir.glob("/*.nii.gz")
+#for filepath in list(files):
 files = glob.glob(inputDir + "/*.nii.gz")
 for filepath in files:
-    file = nib.load(filepath).get_data()
+    print(filepath)
+    file = nib.load(filepath).get_fdata()
     print('original Data shape is ' + str(file.shape) + ' .')
-    im=modcrop(file,2)
+    im = file
+    #im=modcrop(file,2)
 
     fig = plt.figure()
 
     imgfft = np.fft.fftn(im)
-    imgfft_zero = np.zeros((imgfft.shape[0],imgfft.shape[1],imgfft.shape[2]))
+    imgfft_zero = np.zeros((imgfft.shape[0], imgfft.shape[1], imgfft.shape[2]))
 
     fig.add_subplot(2, 4, 1)
     #plt.imshow(im[:, 130, :])
@@ -70,7 +78,7 @@ for filepath in files:
     imgifft3 = np.fft.ifftn(imgfft_shift2)
     #print (imgifft3.shape)
     img_out3 = abs(imgifft3)
-    img_out3 = np.flip(img_out3, axis=0)
+    #img_out3 = np.flip(img_out3, axis=0)
     #fig.add_subplot(2, 4, 7)
     #plt.imshow(img_out3[:, 130, :])
     #plt.title('lr 130 (FFT shift)')
@@ -78,8 +86,8 @@ for filepath in files:
     # save lr nii file
     lr_nii = nib.Nifti1Image(img_out3, affine=np.eye(4))
 
-    filename = filepath.split('/')[-1].split('.')[0]
-    new_filename = filename + '_lr.nii.gz'
+    filename = filepath.split('\\')[-1]
+    new_filename = 'LR_' + filename
     new_pathfile = os.path.join(outputDir, new_filename)
     lr_nii.header.get_xyzt_units()
     lr_nii.to_filename(new_pathfile)

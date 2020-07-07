@@ -26,10 +26,10 @@ def hashTable(gradient, Qangle_p, Qangle_t, Qstrength, Qcoherence):
     coherence = np.abs((lamda1 - lamda2) / (lamda1 + lamda2 + 0.0001))
 
     # Quantization
-    angle_p = math.floor(angle_p / math.pi * Qangle_p)
-    angle_t = math.floor(angle_t / math.pi * Qangle_t)
-    strength = math.floor(strength * Qstrength)
-    coherence = math.floor(coherence * Qcoherence)
+    angle_p = math.floor(angle_p / math.pi * Qangle_p - 0.0001)
+    angle_t = math.floor(angle_t / math.pi * Qangle_t - 0.0001)
+    strength = math.floor(strength * Qstrength - 0.0001)
+    coherence = math.floor(coherence * Qcoherence - 0.0001)
 
     return int(angle_p), int(angle_t), int(strength), int(coherence)
 
