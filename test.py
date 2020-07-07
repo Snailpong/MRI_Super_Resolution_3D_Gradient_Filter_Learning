@@ -51,7 +51,7 @@ for idx, file in enumerate(fileLRList):
             A = patch.reshape(1, -1)
 
             hh = h[j].reshape(1, -1)
-            LRDirect[xP][yP][zP] = cp.matmul(hh, A.T)[0, 0]
+            LRDirect[xP][yP][zP] = max(cp.matmul(hh, A.T)[0, 0], 0)
         except:
             pass
 
