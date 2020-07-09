@@ -72,7 +72,7 @@ def cropBlack(array):
     idx = []
     x_use = [0, array.shape[0]]
     for i in range(array.shape[0]):
-        if (np.sum(array[i, :, :])) == 0:
+        if cp.max(array[i, :, :]) < 0.05:
             idx.append(i)
     for i in range(len(idx) - 1):
         if (idx[i + 1] - idx[i]) != 1:
@@ -82,7 +82,7 @@ def cropBlack(array):
     idx2 = []
     y_use = [0, array.shape[1]]
     for i in range(array.shape[1]):
-        if (np.sum(array[:, i, :])) == 0:
+        if cp.max(array[:, i, :]) < 0.05:
             idx2.append(i)
     for i in range(len(idx2) - 1):
         if (idx2[i + 1] - idx2[i]) != 1:
@@ -92,7 +92,7 @@ def cropBlack(array):
     idx3 = []
     z_use = [0, array.shape[2]]
     for i in range(array.shape[2]):
-        if (np.sum(array[:, :, i])) == 0:
+        if cp.max(array[:, :, i]) < 0.05:
             idx3.append(i)
     for i in range(len(idx3) - 1):
         if (idx3[i + 1] - idx3[i]) != 1:

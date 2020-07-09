@@ -9,20 +9,24 @@ def hashTable(gradient, Qangle_p, Qangle_t, Qstrength, Qcoherence):
     G = np.matrix((gradient[0].ravel(), gradient[1].ravel(), gradient[2].ravel())).T
     x = np.matmul(G.T, G)
     [eigenvalues, eigenvectors] = np.linalg.eig(x)
+    eigensort_arg = np.argsort(eigenvalues)
+
+    arg_first = eigensort_arg[2]
+    arg_second = eigensort_arg[1]
 
     # For angle
-    angle_p = math.atan2(eigenvectors[1, 0], eigenvectors[0, 0])
+    angle_p = math.atan2(eigenvectors[1, arg_first], eigenvectors[0, arg_first])
     if angle_p < 0:
         angle_p += math.pi
 
-    angle_t = math.acos(eigenvectors[2, 0] / (np.linalg.norm(eigenvectors[:, 0]) + 0.0001))
+    angle_t = math.acos(eigenvectors[2, arg_first] / (np.linalg.norm(eigenvectors[:, arg_first]) + 0.0001))
 
     # For strength
     strength = eigenvalues.max() / (eigenvalues.sum() + 0.0001)
 
     # For coherence
     lamda1 = math.sqrt(eigenvalues.max())
-    lamda2 = math.sqrt(max(eigenvalues.min(), 0))
+    lamda2 = math.sqrt(eigenvalues[arg_second])
     coherence = np.abs((lamda1 - lamda2) / (lamda1 + lamda2 + 0.0001))
 
     # Quantization

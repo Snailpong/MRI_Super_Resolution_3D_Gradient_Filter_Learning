@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 #from scipy import sparse
 
 from hashTable import hashTable, hashTable_cupy
-from getMask import getMask
+from getMask import getMask, cropBlack
 from filterVariable import *
 
 # Construct an empty matrix Q, V uses the corresponding LR and HR, h is the filter, three hashmaps are Angle, Strength, Coherence, t
@@ -42,41 +42,57 @@ for idx, file in enumerate(fileList):
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
     LR = cp.array(LR)
+
+    [x_use, y_use, z_use] = cropBlack(LR)
+    print("x: ", x_use, "y: ", y_use, "z: ", z_use)
+
+    xRange = range(x_use[0] + filter_half, x_use[1] - filter_half)
+    yRange = range(y_use[0] + filter_half, y_use[1] - filter_half)
+    zRange = range(z_use[0] + filter_half, z_use[1] - filter_half)
+    
+    
+    
     
     print("Training...")
 
     tT = cp.zeros((Q_total))
 
     # Iterate over each pixel
-    point_size = len(points)
-    for idxp, [xP, yP, zP] in enumerate(points):
-        print(idxp, "/", point_size, end='\r')
-        try:
-            # Take patch
-            patch = LR[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
+    for xP in xRange:
+        for yP in yRange:
+
+            print(xP - xRange[0], "/", xRange[-1] - xRange[0], '\t',
+                yP - yRange[0], "/", yRange[-1] - yRange[0], end='\r', flush=True)
+
+            for zP in zRange:
+
+                # Take patch
+                patch = LR[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
+                        zP - filter_half : zP + (filter_half + 1)]
+
+                #if(cp.max(LR) < 0.03):
+                    #continue
+
+                gx = Lgx[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
+                        zP - filter_half : zP + (filter_half + 1)]
+                gy = Lgy[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
+                        zP - filter_half : zP + (filter_half + 1)]
+                gz = Lgz[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
                     zP - filter_half : zP + (filter_half + 1)]
-            gx = Lgx[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
-                    zP - filter_half : zP + (filter_half + 1)]
-            gy = Lgy[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
-                    zP - filter_half : zP + (filter_half + 1)]
-            gz = Lgz[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
-                zP - filter_half : zP + (filter_half + 1)]
 
-            # Computational characteristics
-            [angle_p, angle_t, strength, coherence] = hashTable([gx, gy, gz], Qangle_p, Qangle_t, Qstrength, Qcoherence)
+                # Computational characteristics
+                [angle_p, angle_t, strength, coherence] = hashTable([gx, gy, gz], Qangle_p, Qangle_t, Qstrength, Qcoherence)
 
-            # Compressed vector space
-            j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
-            A = patch.reshape(1, -1)
-            x = HR[xP][yP][zP]
+                # Compressed vector space
+                j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
+                A = patch.reshape(1, -1)
+                x = HR[xP][yP][zP]
 
-            tT[j] += 1
+                tT[j] += 1
 
-            # Save the corresponding HashMap
-            Q[j] += A * A.T
-            V[j] += A.T * x
-        except:
-            pass
+                # Save the corresponding HashMap
+                Q[j] += A * A.T
+                V[j] += A.T * x
 
     #print(tT)
 

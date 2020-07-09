@@ -11,8 +11,8 @@ from filterVariable import *
 from getMask import getMask_test
 
 
-dataDir="./test/*"
-dataLRDir="./test_low/*"
+dataDir="./train/*"
+dataLRDir="./train_low/*"
 
 fileList = [file for file in glob.glob(dataDir) if file.endswith(".nii.gz")]
 fileLRList = [file for file in glob.glob(dataLRDir) if file.endswith(".nii.gz")]
