@@ -1,6 +1,5 @@
 __pycache__/
 py_nope/
-result_nope/
 result_temp/
 *.npy
 *.nii

@@ -20,8 +20,8 @@ def modcrop(im,modulo):
         out = im[0:size0, 0:size1, 0:size2]
     return out
 
-inputDir = '.\\train'
-outputDir = '.\\train_low'
+inputDir = '.\\test'
+outputDir = '.\\test_low'
 #inputDir = pathlib.Path('./train')
 #outputDir = pathlib.Path('./train_low')
 
@@ -51,10 +51,10 @@ for filepath in files:
     #plt.imshow(20*np.log(abs(imgfft[:, :, 0]))) 
     #plt.title('after FFT')
 
-    x_area=y_area=z_area=30
-    #x_area = imgfft.shape[0] // 4
-    #y_area = imgfft.shape[1] // 4
-    #z_area = imgfft.shape[2] // 4
+    #x_area=y_area=z_area=30
+    x_area = imgfft.shape[0] // 6
+    y_area = imgfft.shape[1] // 6
+    z_area = imgfft.shape[2] // 6
 
     x_center = imgfft.shape[0] // 2
     y_center = imgfft.shape[1] // 2

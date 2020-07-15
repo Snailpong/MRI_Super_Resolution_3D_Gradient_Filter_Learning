@@ -64,7 +64,7 @@ def getMask_test(fileName, LR, filter_half):
 
     return mask
 
-def cropBlack(array):
+def crop_black(array):
     #print('original Data shape is ' + str(array.shape) + ' .')
     array = array.copy()
     array = array.round(out=array).astype(np.uint8)
