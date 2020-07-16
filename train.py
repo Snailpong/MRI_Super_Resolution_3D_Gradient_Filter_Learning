@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import cv2
 #from scipy import sparse
 
-from hashTable import hashtable, hashTable_cupy
+from hashTable import hashtable, hashtable_cupy
 from getMask import crop_black
 from util import *
 from filterVariable import *
@@ -23,8 +23,8 @@ from filterVariable import *
 # Q = cp.zeros((Q_total, filter_volume, filter_volume))
 # V = cp.zeros((Q_total, filter_volume, 1))
 
-Q = np.zeros((Q_total, pixel_type, filter_volume, filter_volume))
-V = np.zeros((Q_total, pixel_type, filter_volume, 1))
+Q = cp.zeros((Q_total, pixel_type, filter_volume, filter_volume))
+V = cp.zeros((Q_total, pixel_type, filter_volume, 1))
 h = np.zeros((Q_total, pixel_type, filter_volume))
 
 dataDir="./train/*"
@@ -35,8 +35,9 @@ fileLRList = [file for file in glob.glob(dataLRDir) if file.endswith(".nii.gz")]
 
 # Matrix preprocessing
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
-weighting = Gaussian3d([gradientsize, gradientsize], 2)
-weighting = np.diag(weighting.ravel())
+weight = gaussian_3d((filter_length,filter_length,filter_length))
+weight = np.diag(weight.ravel())
+weight = np.array(weight, dtype=np.float32)
 
 
 for idx, file in enumerate(fileList):
@@ -50,11 +51,16 @@ for idx, file in enumerate(fileList):
     # Normalized to [0, 1]
     HR = mat / np.max(mat)
 
+    # Dog-Sharpening
+    print("Sharpening...", end='', flush=True)
+    HR = dog_sharpener(HR)
+
     # Using k-space domain
     #mat_file2 = np.array(nib.load(fileLRList[idx]).dataobj)
     #LR = mat_file2 / np.max(mat)
 
     # Downscale (bicububic interpolation)
+    print("\rMaking LR...", end='', flush=True)
     downscaled_LR = zoom(HR, 0.5, order=2)
 
     # Upscale (bilinear interpolation)
@@ -63,8 +69,8 @@ for idx, file in enumerate(fileList):
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
     # Using Cupy
-    #HR = cp.array(HR)
-    #LR = cp.array(LR)
+    HR = np.array(HR)
+    LR = np.array(LR)
 
     #[x_use, y_use, z_use] = cropBlack(LR)
     #print("x: ", x_use, "y: ", y_use, "z: ", z_use)
@@ -82,8 +88,8 @@ for idx, file in enumerate(fileList):
     for xP in xRange:
         for yP in yRange:
 
-            print(xP - xRange[0], "/", xRange[-1] - xRange[0], '\t',
-                yP - yRange[0], "/", yRange[-1] - yRange[0], end='\r', flush=True)
+            print('\r', xP - xRange[0], "/", xRange[-1] - xRange[0], '\t',
+                yP - yRange[0], "/", yRange[-1] - yRange[0], end='', flush=True)
 
             for zP in zRange:
                 patch = LR[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
@@ -100,12 +106,13 @@ for idx, file in enumerate(fileList):
                      zP - filter_half: zP + (filter_half + 1)]
 
                 # Computational characteristics
-                angle_p, angle_t, strength, coherence = hashtable([gx, gy, gz], )
+                angle_p, angle_t, strength, coherence = hashtable([gx, gy, gz], weight)
 
                 # Compressed vector space
                 j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
                 t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
                 
+                #A = cp.array(patch.ravel())
                 A = np.matrix(patch.ravel())
                 x = HR[xP, yP, zP]
 
@@ -115,8 +122,9 @@ for idx, file in enumerate(fileList):
 
     #print(tT)
 
-#Q = Q.get()
-#V = V.get()
+if str(type(Q)) == '<class \'cupy.core.core.ndarray\'>':
+    Q = Q.get()
+    V = V.get()
 
 np.save("./Q", Q)
 np.save("./V", V)

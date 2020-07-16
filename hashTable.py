@@ -3,17 +3,18 @@
 import numpy as np
 import cupy as cp
 import math
+from numba import jit
 
 from filterVariable import *
 
-
-def hashtable(gradient, W):
+#@jit(nopython=True)
+def hashtable(gradient, weight):
     G = np.vstack((gradient[0].ravel(), gradient[1].ravel(), gradient[2].ravel())).T
     x0 = np.dot(G.T, weight)
-    x = np.matmul(G.T, G)
+    x = np.dot(x0, G)
     [eigenvalues, eigenvectors] = np.linalg.eig(x)
 
-    idx = w.argsort()[::-1]
+    idx = eigenvalues.argsort()[::-1]
     eigenvalues = eigenvalues[idx]
     eigenvectors = eigenvectors[:, idx]
 
@@ -30,8 +31,8 @@ def hashtable(gradient, W):
     strength = eigenvalues[0]
 
     # For coherence
-    lamda1 = math.sqrt(eigenvalues.max())
-    lamda2 = math.sqrt(eigenvalues[arg_second])
+    lamda1 = math.sqrt(eigenvalues[0])
+    lamda2 = math.sqrt(eigenvalues[1])
     coherence = (lamda1 - lamda2) / (lamda1 + lamda2 + 0.0001)
 
     # Quantization
@@ -58,7 +59,7 @@ def hashtable(gradient, W):
     return angle_p, angle_t, strength, coherence
 
 
-def hashTable_cupy(gradient, Qangle_p, Qangle_t, Qstrength, Qcoherence):
+def hashtable_cupy(gradient, Qangle_p, Qangle_t, Qstrength, Qcoherence):
     G = cp.array((gradient[0].ravel(), gradient[1].ravel(), gradient[2].ravel())).T
     x = cp.matmul(G.T, G)
     [eigenvalues, eigenvectors] = cp.linalg.eigh(x)

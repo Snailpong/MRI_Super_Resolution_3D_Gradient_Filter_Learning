@@ -1,7 +1,7 @@
-Qangle_t = 12
-Qangle_p = 6
+Qangle_t = 8
+Qangle_p = 8
 
-filter_length = 9
+filter_length = 11
 filter_half = filter_length // 2
 
 # Do not edit!
