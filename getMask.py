@@ -67,12 +67,16 @@ def getMask_test(fileName, LR, filter_half):
 def crop_black(array):
     #print('original Data shape is ' + str(array.shape) + ' .')
     array = array.copy()
+
+    if str(type(array)) == '<class \'cupy.core.core.ndarray\'>':
+        array = array.get()
+
     array = array.round(out=array).astype(np.uint8)
 
     idx = []
     x_use = [0, array.shape[0]]
     for i in range(array.shape[0]):
-        if cp.max(array[i, :, :]) < 0.05:
+        if np.max(array[i, :, :]) == 0:
             idx.append(i)
     for i in range(len(idx) - 1):
         if (idx[i + 1] - idx[i]) != 1:
@@ -82,7 +86,7 @@ def crop_black(array):
     idx2 = []
     y_use = [0, array.shape[1]]
     for i in range(array.shape[1]):
-        if cp.max(array[:, i, :]) < 0.05:
+        if np.max(array[:, i, :]) == 0:
             idx2.append(i)
     for i in range(len(idx2) - 1):
         if (idx2[i + 1] - idx2[i]) != 1:
@@ -92,7 +96,7 @@ def crop_black(array):
     idx3 = []
     z_use = [0, array.shape[2]]
     for i in range(array.shape[2]):
-        if cp.max(array[:, :, i]) < 0.05:
+        if np.max(array[:, :, i]) == 0:
             idx3.append(i)
     for i in range(len(idx3) - 1):
         if (idx3[i + 1] - idx3[i]) != 1:

@@ -47,8 +47,8 @@ for idx, file in enumerate(fileList):
     HR = mat
 
     # Dog-Sharpening
-    print("Sharpening...", end='', flush=True)
-    HR = dog_sharpener(HR)
+    #print("Sharpening...", end='', flush=True)
+    #HR = dog_sharpener(HR)
 
     # Using k-space domain
     # mat_file2 = np.array(nib.load(fileLRList[idx]).dataobj)
@@ -61,8 +61,8 @@ for idx, file in enumerate(fileList):
     # Upscale (bilinear interpolation)
     LR = zoom(downscaled_LR, 2, order=1)
 
-
-
+    ni_img = nib.Nifti1Image(LR, np.eye(4))
+    nib.save(ni_img, str(idx) + 'LR.nii.gz')
 
 
 
@@ -71,16 +71,20 @@ for idx, file in enumerate(fileList):
     LR = cp.array(LR)
     LRDirect = cp.zeros((LR.shape[0], LR.shape[1], LR.shape[2]))
 
-    #[x_use, y_use, z_use] = crop_black(LR)
-    #print("x: ", x_use, "y: ", y_use, "z: ", z_use)
+    [x_use, y_use, z_use] = crop_black(LR)
+    print("x: ", x_use, "y: ", y_use, "z: ", z_use)
 
-    #xRange = range(max(filter_half, x_use[0] - filter_half), min(LR.shape[0] - filter_half, x_use[1] + filter_half))
-    #yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
-    #zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
+    xRange = range(max(filter_half, x_use[0] - filter_half), min(LR.shape[0] - filter_half, x_use[1] + filter_half))
+    yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
+    zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
 
-    xRange = range(100, 200)
-    yRange = range(100, 200)
-    zRange = range(100, 200)
+    # xRange = range(80,180)
+    # yRange = range(105,205)
+    # zRange = range(80,180)
+
+    xRange = range(60,200)
+    yRange = range(85,225)
+    zRange = range(60,200)
 
     for xP in xRange:
         for yP in yRange:
@@ -111,5 +115,9 @@ for idx, file in enumerate(fileList):
             
     ni_img = nib.Nifti1Image(LRDirect, np.eye(4))
     nib.save(ni_img, str(idx) + 'outputt2_gg.nii.gz')
+
+    HR_Blend = blend_image(LR.get(), LRDirect)
+    ni_img = nib.Nifti1Image(HR_Blend, np.eye(4))
+    nib.save(ni_img, str(idx) + 'outputt3_gg.nii.gz')
 
 print("Test is off")

@@ -23,8 +23,8 @@ from filterVariable import *
 # Q = cp.zeros((Q_total, filter_volume, filter_volume))
 # V = cp.zeros((Q_total, filter_volume, 1))
 
-Q = cp.zeros((Q_total, pixel_type, filter_volume, filter_volume))
-V = cp.zeros((Q_total, pixel_type, filter_volume, 1))
+Q = np.zeros((Q_total, pixel_type, filter_volume, filter_volume))
+V = np.zeros((Q_total, pixel_type, filter_volume, 1))
 h = np.zeros((Q_total, pixel_type, filter_volume))
 
 dataDir="./train/*"
@@ -69,19 +69,23 @@ for idx, file in enumerate(fileList):
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
     # Using Cupy
-    HR = np.array(HR)
-    LR = np.array(LR)
+    # HR = np.array(HR)
+    # LR = np.array(LR)
 
-    #[x_use, y_use, z_use] = cropBlack(LR)
-    #print("x: ", x_use, "y: ", y_use, "z: ", z_use)
+    [x_use, y_use, z_use] = crop_black(LR)
+    print("x: ", x_use, "y: ", y_use, "z: ", z_use)
 
     # xRange = range(max(filter_half, x_use[0] - filter_half), min(LR.shape[0] - filter_half, x_use[1] + filter_half))
     # yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
     # zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
 
-    xRange = range(100,200)
-    yRange = range(100,200)
-    zRange = range(100,200)
+    # xRange = range(80,180)
+    # yRange = range(105,205)
+    # zRange = range(80,180)
+
+    xRange = range(60,200)
+    yRange = range(85,225)
+    zRange = range(60,200)
 
 
     # Iterate over each pixel
