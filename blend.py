@@ -19,12 +19,16 @@ from getMask import getMask_test, crop_black
 from util import *
 
 
-file = "0LR.nii.gz"
-file2 = "0outputt2_gg.nii.gz"
+file = "test/T1w_acpc_dc_restore_brain_101410.nii.gz"
+file2 = "result/071711_0outputt2_gg.nii.gz"
 
 
 # Load NIfTI Image
-LR = nib.load(file).dataobj[:, :-1, :]
+HR = nib.load(file).dataobj[:, :-1, :]
+downscaled_LR = zoom(HR, 0.5, order=2)
+LR = zoom(downscaled_LR, 2, order=1)
+
+
 LR_empty = LR.copy()
 LR_empty[60:200, 85:225, 60:200] = 0
 LR = LR - LR_empty

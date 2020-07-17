@@ -3,17 +3,17 @@ import numpy as np
 import os
 import pickle
 import sys
-#from cgls import cgls
-#from filterplot import filterplot
-#from gaussian2d import gaussian2d
-#from gettrainargs import gettrainargs
-#from hashkey import hashkey
-#from math import floor
-from matplotlib import pyplot as plt
-from scipy import interpolate
-from skimage import transform
+
 from scipy.ndimage.filters import convolve
+from scipy.ndimage import zoom
 from numba import jit
+
+from filterVariable import *
+
+def get_lr_interpolation(hr):
+    downscaled_lr = zoom(hr, 0.5, order=2)
+    lr = zoom(downscaled_lr, 2, order=1)
+    return lr
 
 def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
     G1 = gaussian_3d_blur(input, ksize, sigma)
@@ -60,12 +60,48 @@ def ct_descriptor(im):
                                     CT[i, j, k, a + C, b + C, c + C] = 1
                 Census[i, j, k] = cen
     Census = Census / 26
-    return Census
+    return Census, CT
+
+@jit(nopython=True)
+def blend_weight(LR, HR, ctLR, ctHR):
+    windowSize = 3
+    threshold = 5
+    H, W, D = ctLR.shape[:3]
+    blended = np.zeros((H, W, D), dtype=np.float64)
+
+    C = np.int((windowSize - 1) / 2)
+    for i in range(C, H - C):
+        for j in range(C, W - C):
+            for k in range(C, D - C):
+                dist = 0
+                for a in range(-C, C + 1):
+                    for b in range(-C, C + 1):
+                        for c in range(-C, C + 1):
+                            if not (a == 0 and b == 0 and c == 0):
+                                if ctLR[i, j, k, a + C, b + C, c + C] != ctHR[i, j, k, a + C, b + C, c + C]:
+                                    dist += 1
+                if dist > threshold:
+                    blended[i, j, k] = LR[i, j, k]
+                else:
+                    blended[i, j, k] = HR[i, j, k]
+    return blended
+
+
+
+    blended = census * HR + (1 - census) * LR
+    return blended
+
+@jit(nopython=True)
+def blend_image2(LR, HR):
+    census, ct = ct_descriptor(LR)
+    blended = census * HR + (1 - census) * LR
+    return blended
 
 @jit(nopython=True)
 def blend_image(LR, HR):
-    census = ct_descriptor(LR)
-    blended = census * HR + (1 - census) * LR
+    censusLR, ctLR = ct_descriptor(LR)
+    censusHR, ctHR = ct_descriptor(HR)
+    blended = blend_weight(LR, HR, ctLR, ctHR)
     return blended
 
 
