@@ -6,7 +6,7 @@ import sys
 
 from scipy.ndimage.filters import convolve
 from scipy.ndimage import zoom
-from numba import jit
+from numba import jit, njit, cuda, prange
 
 from filterVariable import *
 
@@ -40,7 +40,7 @@ def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
 
     return output
 
-@jit(nopython=True)
+@njit
 def ct_descriptor(im):
     H, W, D = im.shape
     windowSize = 3
@@ -62,7 +62,7 @@ def ct_descriptor(im):
     Census = Census / 26
     return Census, CT
 
-@jit(nopython=True)
+@njit
 def blend_weight(LR, HR, ctLR, ctHR):
     windowSize = 3
     threshold = 5
@@ -91,13 +91,13 @@ def blend_weight(LR, HR, ctLR, ctHR):
     blended = census * HR + (1 - census) * LR
     return blended
 
-@jit(nopython=True)
+@njit
 def blend_image2(LR, HR):
     census, ct = ct_descriptor(LR)
     blended = census * HR + (1 - census) * LR
     return blended
 
-@jit(nopython=True)
+@njit
 def blend_image(LR, HR):
     censusLR, ctLR = ct_descriptor(LR)
     censusHR, ctHR = ct_descriptor(HR)
@@ -109,6 +109,12 @@ def gaussian_3d_blur(input, ksize=(3,3,3), sigma=0.85):
     filter = gaussian_3d(ksize, sigma)
     output = convolve(input, filter)
     return output
+
+@njit(parallel=True)
+def ata_add(A, B):
+    for i in prange(A.shape[1]):
+        for j in prange(A.shape[1]):
+            B[i, j] += A[0, i] * A[0, j]
 
 
 def add_weight(i1, w1, i2, w2, bias):

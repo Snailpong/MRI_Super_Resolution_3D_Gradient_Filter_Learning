@@ -44,27 +44,22 @@ for idx, file in enumerate(fileList):
     print(idx+1, "/", len(fileList), "\t", file)
 
     # Load NIfTI Image
-    mat_file = nib.load(file)
-    mat = np.array(mat_file.dataobj)
-    mat = mat[:, :-1, :]
+    HR = nib.load(file).dataobj[:, :-1, :]
 
     # Normalized to [0, 1]
-    HR = mat / np.max(mat)
-
-    # Dog-Sharpening
-    print("Sharpening...", end='', flush=True)
-    HR = dog_sharpener(HR)
+    HR = HR / np.max(HR)
 
     # Using k-space domain
     #mat_file2 = np.array(nib.load(fileLRList[idx]).dataobj)
     #LR = mat_file2 / np.max(mat)
 
-    # Downscale (bicububic interpolation)
-    print("\rMaking LR...", end='', flush=True)
-    downscaled_LR = zoom(HR, 0.5, order=2)
+    # Using Image domain
+    print("Making LR...", end='', flush=True)
+    LR = get_lr_interpolation(HR)
 
-    # Upscale (bilinear interpolation)
-    LR = zoom(downscaled_LR, 2, order=1)
+    # Dog-Sharpening
+    print("\rSharpening...", end='', flush=True)
+    HR = dog_sharpener(HR)
 
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
@@ -75,17 +70,17 @@ for idx, file in enumerate(fileList):
     [x_use, y_use, z_use] = crop_black(LR)
     print("x: ", x_use, "y: ", y_use, "z: ", z_use)
 
-    # xRange = range(max(filter_half, x_use[0] - filter_half), min(LR.shape[0] - filter_half, x_use[1] + filter_half))
-    # yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
-    # zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
+    xRange = range(max(filter_half, x_use[0] - filter_half), min(LR.shape[0] - filter_half, x_use[1] + filter_half))
+    yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
+    zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
 
     # xRange = range(80,180)
     # yRange = range(105,205)
     # zRange = range(80,180)
 
-    xRange = range(60,200)
-    yRange = range(85,225)
-    zRange = range(60,200)
+    # xRange = range(60,200)
+    # yRange = range(85,225)
+    # zRange = range(60,200)
 
 
     # Iterate over each pixel
@@ -99,8 +94,8 @@ for idx, file in enumerate(fileList):
                 patch = LR[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
                         zP - filter_half: zP + (filter_half + 1)]
 
-                # if(cp.max(LR) < 0.03):
-                # continue
+                if not np.any(patch):
+                        continue
 
                 gx = Lgx[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
                      zP - filter_half: zP + (filter_half + 1)]
@@ -121,7 +116,7 @@ for idx, file in enumerate(fileList):
                 x = HR[xP, yP, zP]
 
                 # Save the corresponding HashMap
-                Q[j, t] += np.dot(A.T, A)
+                ata_add(A, Q[j, t])
                 V[j, t] += np.dot(A.T, x)
 
     #print(tT)
