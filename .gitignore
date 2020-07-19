@@ -14,3 +14,4 @@ train_original.py
 train_numpy.py
 transpose.py
 timeCheck.py
+*.txt

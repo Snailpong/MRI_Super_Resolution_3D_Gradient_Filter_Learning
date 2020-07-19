@@ -82,9 +82,9 @@ for idx, file in enumerate(fileList):
     # yRange = range(105,205)
     # zRange = range(80,180)
 
-    xRange = range(60,200)
-    yRange = range(85,225)
-    zRange = range(60,200)
+    # xRange = range(60,200)
+    # yRange = range(85,225)
+    # zRange = range(60,200)
 
     for xP in xRange:
         for yP in yRange:
@@ -95,6 +95,10 @@ for idx, file in enumerate(fileList):
             for zP in zRange:
                 patch = LR[xP - filter_half : xP + (filter_half + 1), yP - filter_half : yP + (filter_half + 1),
                         zP - filter_half : zP + (filter_half + 1)]
+
+                if not np.any(patch):
+                    continue
+
                 gx = Lgx[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
                         zP - filter_half: zP + (filter_half + 1)]
                 gy = Lgy[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),

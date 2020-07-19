@@ -21,12 +21,13 @@ from filterVariable import *
 
 
 file = "test/T1w_acpc_dc_restore_brain_101410.nii.gz"
-file2 = "result/071711_0outputt2_gg.nii.gz"
+file2 = "result/071907_0outputt3_gg.nii.gz"
 
 
 # Load NIfTI Image
 HR = nib.load(file).dataobj[:, :-1, :]
-LR = get_lr_interpolation(HR)
+LR = get_lr_kspace(HR)
+#LR = dog_sharpener(HR)
 Result = nib.load(file2).dataobj[:, :-1, :]
 
 HR = np.flip(HR.T, 0)

@@ -1,5 +1,6 @@
 import os
 import glob
+import time
 
 import numpy as np
 import cupy as cp
@@ -39,9 +40,11 @@ weight = gaussian_3d((filter_length,filter_length,filter_length))
 weight = np.diag(weight.ravel())
 weight = np.array(weight, dtype=np.float32)
 
+start = time.time()
+
 
 for idx, file in enumerate(fileList):
-    print(idx+1, "/", len(fileList), "\t", file)
+    print('\n[' + str(idx+1), '/', str(len(fileList)) + ']\t', file)
 
     # Load NIfTI Image
     HR = nib.load(file).dataobj[:, :-1, :]
@@ -54,11 +57,11 @@ for idx, file in enumerate(fileList):
     #LR = mat_file2 / np.max(mat)
 
     # Using Image domain
-    print("Making LR...", end='', flush=True)
+    print('Making LR...', end='', flush=True)
     LR = get_lr_interpolation(HR)
 
     # Dog-Sharpening
-    print("\rSharpening...", end='', flush=True)
+    print('\rSharpening...', end='', flush=True)
     HR = dog_sharpener(HR)
 
     [Lgx, Lgy, Lgz] = np.gradient(LR)
@@ -139,5 +142,5 @@ for j in range(Q_total):
         #h[j] = cg(Q[j], V[j])[0]
         h[j,t] = sparse.linalg.cg(Q[j,t], V[j,t])[0]
 
-print("Train is off")
-np.save("./filter_array/lowR4", h)
+print('Train is off in {} minutes'.format((time.time() - start) // 60))
+np.save('./filter_array/lowR4', h)
