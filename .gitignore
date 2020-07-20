@@ -4,7 +4,6 @@ result_temp/
 *.npy
 *.nii
 *.gz
-check_time.py
 cupyfunc.py
 *.png
 hashTable_original.py
@@ -13,5 +12,4 @@ train_numba.py
 train_original.py
 train_numpy.py
 transpose.py
-timeCheck.py
 *.txt

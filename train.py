@@ -138,8 +138,6 @@ print("\nComputing H...")
 for j in range(Q_total):
     for t in range(pixel_type):
         print(j, "/", Q_total, end='\r', flush=True)
-        # Train 8 * 24 * 3 * 3 filters for each pixel type and image feature
-        #h[j] = cg(Q[j], V[j])[0]
         h[j,t] = sparse.linalg.cg(Q[j,t], V[j,t])[0]
 
 print('Train is off in {} minutes'.format((time.time() - start) // 60))
