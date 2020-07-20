@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import cupy as cp
 import math
 from numba import jit
 

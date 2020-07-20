@@ -3,7 +3,6 @@ import glob
 import time
 
 import numpy as np
-import cupy as cp
 from numba import jit
 
 import scipy.sparse as sparse

@@ -2,7 +2,6 @@ import os
 import glob
 
 import numpy as np
-import cupy as cp
 from numba import jit
 
 import scipy.sparse as sparse

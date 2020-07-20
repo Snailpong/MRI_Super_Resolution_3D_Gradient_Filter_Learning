@@ -3,8 +3,6 @@ import glob
 import numpy as np
 import cv2
 import math
-import cupy as cp
-#import scipy as scipy
 import scipy.linalg as ln
 from numba import jit, cuda, prange
 import nibabel as nib
