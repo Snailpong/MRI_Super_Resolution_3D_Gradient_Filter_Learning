@@ -20,18 +20,13 @@ from util import *
 
 
 file = "test/T1w_acpc_dc_restore_brain_101410.nii.gz"
-file2 = "result/071711_0outputt2_gg.nii.gz"
+file2 = "0outputt2_gg.nii.gz"
 
 
 # Load NIfTI Image
 HR = nib.load(file).dataobj[:, :-1, :]
-downscaled_LR = zoom(HR, 0.5, order=2)
-LR = zoom(downscaled_LR, 2, order=1)
+LR = get_lr_kspace(HR)
 
-
-LR_empty = LR.copy()
-LR_empty[60:200, 85:225, 60:200] = 0
-LR = LR - LR_empty
 LRDirect = nib.load(file2).dataobj[:, :-1, :]
 
 # Dog-Sharpening
@@ -49,7 +44,7 @@ LRDirect = nib.load(file2).dataobj[:, :-1, :]
 # Upscale (bilinear interpolation)
 # LR = zoom(downscaled_LR, 2, order=1)
 
-HR_Blend = blend_image(LR, LRDirect)
+HR_Blend = blend_image(LR, LRDirect, 5)
 ni_img = nib.Nifti1Image(HR_Blend, np.eye(4))
 nib.save(ni_img, '0outputt3_gg.nii.gz')
 

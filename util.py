@@ -19,7 +19,7 @@ def get_lr_kspace(hr):
     imgfft = np.fft.fftn(hr)
     imgfft_zero = np.zeros((imgfft.shape[0], imgfft.shape[1], imgfft.shape[2]))
 
-    x_area = y_area = z_area=60
+    x_area = y_area = z_area = 60
 
     x_center = imgfft.shape[0] // 2
     y_center = imgfft.shape[1] // 2
@@ -62,13 +62,15 @@ def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
     return output
 
 @njit(parallel=True)
-def clip_zero(im):
+def clip(im, low, high):
     H, W, D = im.shape
     for i in prange(H):
         for j in prange(W):
             for k in prange(D):
-                if im[i, j, k] < 0:
-                    im[i, j, k] = 0
+                if im[i, j, k] < low:
+                    im[i, j, k] = low
+                elif im[i, j, k] > high:
+                    im[i, j, k] = high
 
 
 @njit

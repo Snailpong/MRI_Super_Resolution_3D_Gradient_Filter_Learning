@@ -32,7 +32,7 @@ weight = np.diag(weight.ravel())
 weight = np.array(weight, dtype=np.float32)
 
 h = np.load("./filter_array/lowR4.npy")
-h = cp.array(h)
+h = np.array(h)
 
 for idx, file in enumerate(fileList):
     print(idx+1, "/", len(fileList), "\t", file)
@@ -54,12 +54,9 @@ for idx, file in enumerate(fileList):
     # mat_file2 = np.array(nib.load(fileLRList[idx]).dataobj)
     # LR = mat_file2 / np.max(mat)
 
-    # Downscale (bicububic interpolation)
-    print("\rMaking LR...", end='', flush=True)
-    downscaled_LR = zoom(HR, 0.5, order=2)
-
-    # Upscale (bilinear interpolation)
-    LR = zoom(downscaled_LR, 2, order=1)
+    # Using Image domain
+    print('Making LR...', end='', flush=True)
+    LR = get_lr_kspace(HR)
 
     ni_img = nib.Nifti1Image(LR, np.eye(4))
     nib.save(ni_img, str(idx) + 'LR.nii.gz')
@@ -68,8 +65,8 @@ for idx, file in enumerate(fileList):
 
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
-    LR = cp.array(LR)
-    LRDirect = cp.zeros((LR.shape[0], LR.shape[1], LR.shape[2]))
+    LR = np.array(LR)
+    LRDirect = np.zeros((LR.shape[0], LR.shape[1], LR.shape[2]))
 
     [x_use, y_use, z_use] = crop_black(LR)
     print("x: ", x_use, "y: ", y_use, "z: ", z_use)
@@ -106,21 +103,19 @@ for idx, file in enumerate(fileList):
                 gz = Lgz[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
                     zP - filter_half: zP + (filter_half + 1)]
 
-                [angle_p, angle_t, strength, coherence] = hashtable([gx, gy, gz], weight)
+                [angle_p, angle_t, strength, coherence] = hashtable(gx, gy, gz, weight)
 
                 j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
                 t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
                 A = patch.reshape(1, -1)
+                hh = h[j][t].reshape(1, -1)
+                LRDirect[xP][yP][zP] = max(np.matmul(hh, A.T)[0, 0], 0)
 
-                hh = h[j, t].reshape(1, -1)
-                LRDirect[xP][yP][zP] = max(cp.matmul(hh, A.T)[0, 0], 0)
-
-    LRDirect = LRDirect.get()
             
     ni_img = nib.Nifti1Image(LRDirect, np.eye(4))
     nib.save(ni_img, str(idx) + 'outputt2_gg.nii.gz')
 
-    HR_Blend = blend_image(LR.get(), LRDirect)
+    HR_Blend = blend_image(LR.get(), LRDirect, 5)
     ni_img = nib.Nifti1Image(HR_Blend, np.eye(4))
     nib.save(ni_img, str(idx) + 'outputt3_gg.nii.gz')
 

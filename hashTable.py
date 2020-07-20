@@ -8,8 +8,9 @@ from numba import jit
 from filterVariable import *
 
 #@jit(nopython=True)
-def hashtable(gradient, weight):
-    G = np.vstack((gradient[0].ravel(), gradient[1].ravel(), gradient[2].ravel())).T
+@jit
+def hashtable(gx, gy, gz, weight):
+    G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
     x0 = np.dot(G.T, weight)
     x = np.dot(x0, G)
     [eigenvalues, eigenvectors] = np.linalg.eig(x)
@@ -56,33 +57,4 @@ def hashtable(gradient, weight):
     else:
         coherence = 1
 
-    return angle_p, angle_t, strength, coherence
-
-
-def hashtable_cupy(gradient, Qangle_p, Qangle_t, Qstrength, Qcoherence):
-    G = cp.array((gradient[0].ravel(), gradient[1].ravel(), gradient[2].ravel())).T
-    x = cp.matmul(G.T, G)
-    [eigenvalues, eigenvectors] = cp.linalg.eigh(x)
-
-    # For angle
-    angle_p = math.atan2(eigenvectors[1, 0], eigenvectors[0, 0])
-    if angle_p < 0:
-        angle_p += math.pi
-
-    angle_t = math.acos(eigenvectors[2, 0] / (cp.linalg.norm(eigenvectors[:, 0]) + 0.0001))
-
-    # For strength
-    strength = eigenvalues.max() / (eigenvalues.sum() + 0.0001)
-
-    # For coherence
-    lamda1 = math.sqrt(eigenvalues.max())
-    lamda2 = math.sqrt(max(eigenvalues.min(), 0))
-    coherence = np.abs((lamda1 - lamda2) / (lamda1 + lamda2 + 0.0001))
-
-    # Quantization
-    angle_p = math.floor(angle_p / math.pi * Qangle_p - 0.0001)
-    angle_t = math.floor(angle_t / math.pi * Qangle_t - 0.0001)
-    strength = math.floor(strength * Qstrength - 0.0001)
-    coherence = math.floor(coherence * Qcoherence - 0.0001)
-
-    return int(angle_p), int(angle_t), int(strength), int(coherence)
+    return angle_p, angle_t, int(strength), int(coherence)

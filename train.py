@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import cv2
 #from scipy import sparse
 
-from hashTable import hashtable, hashtable_cupy
+from hashTable import hashtable
 from getMask import crop_black
 from util import *
 from filterVariable import *
@@ -58,7 +58,7 @@ for idx, file in enumerate(fileList):
 
     # Using Image domain
     print('Making LR...', end='', flush=True)
-    LR = get_lr_interpolation(HR)
+    LR = get_lr_kspace(HR)
 
     # Dog-Sharpening
     print('\rSharpening...', end='', flush=True)
@@ -108,7 +108,7 @@ for idx, file in enumerate(fileList):
                      zP - filter_half: zP + (filter_half + 1)]
 
                 # Computational characteristics
-                angle_p, angle_t, strength, coherence = hashtable([gx, gy, gz], weight)
+                angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
 
                 # Compressed vector space
                 j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
