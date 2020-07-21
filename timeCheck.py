@@ -226,11 +226,7 @@ for i in range(500):
 
     angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
 
-    if i != 0:
-        check2 += time.time() - start
-    start = time.time()
-
-
+    
     # Compressed vector space
     j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
     t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
@@ -240,22 +236,17 @@ for i in range(500):
     A = patch.reshape(1, -1)
     hh = h[j, t].reshape(1, -1)
 
-
-
-    check3 += time.time() - start
-    start = time.time()
-
-    
     LRDirect[xP][yP][zP] = max(np.matmul(hh, A.T)[0, 0], 0)
-
-
-
 
     x = HR[xP, yP, zP]
 
-    check4 += time.time() - start
+    B = Q[j, t]
+
+    if i != 0:
+        check2 += time.time() - start
     start = time.time()
 
+    
    # tT[j] += 1
 
     # Save the corresponding HashMap
@@ -270,13 +261,42 @@ for i in range(500):
     #matmul(A.T, A, ATA)
     #ATA = ATA.get()
     #matmul_add(A.T, A, Q[j, t])
-    ata_add(A, Q[j, t])
+
+    #Q[j, t] += np.dot(A.T, A)
+    #ata_add(A, Q[j, t])
+
+    #ata_add_cuda_all(A, Q[j, t])
+
+    
+
+    threadsperblock = (32, 32)
+    blockspergrid_x = int(math.ceil(A.shape[1] / threadsperblock[0]))
+    blockspergrid_y = int(math.ceil(A.shape[1] / threadsperblock[1]))
+    blockspergrid = (blockspergrid_x, blockspergrid_y)
+
+    A_dary = cuda.to_device(A)
+    B_dary = cuda.device_array(B.shape, B.dtype)
+
+    check3 += time.time() - start
+    start = time.time()
+
+    
+
+
+    ata_add_cuda[blockspergrid, threadsperblock](A_dary, B_dary)
+
+    check4 += time.time() - start
+    start = time.time()
+
+
+
+    B_dary.copy_to_host(B)
 
 
 
     #addNumba(Q[j, t], ATA)
     #Q[j, t] += ATA
-    #Q[j, t] += np.dot(A.T, A)
+    #
 
     check5 += time.time() - start
     start = time.time()

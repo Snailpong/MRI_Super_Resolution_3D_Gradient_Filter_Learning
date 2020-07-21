@@ -3,10 +3,11 @@ import numpy as np
 import os
 import pickle
 import sys
+import math
 
 from scipy.ndimage.filters import convolve
 from scipy.ndimage import zoom
-from numba import jit, njit, cuda, prange
+from numba import jit, njit, cuda, prange, vectorize
 
 from filterVariable import *
 
@@ -147,6 +148,30 @@ def ata_add(A, B):
     for i in prange(A.shape[1]):
         for j in prange(A.shape[1]):
             B[i, j] += A[0, i] * A[0, j]
+
+def ata_add_cuda_all(A, B):
+    threadsperblock = (32, 32)
+    blockspergrid_x = int(math.ceil(A.shape[1] / threadsperblock[0]))
+    blockspergrid_y = int(math.ceil(A.shape[1] / threadsperblock[1]))
+    blockspergrid = (blockspergrid_x, blockspergrid_y)
+
+    A_dary = cuda.to_device(A)
+    B_dary = cuda.device_array(B.shape, B.dtype)
+
+    global check4
+
+    check4 += time.time() - start
+    start = time.time()
+
+
+    ata_add_cuda[blockspergrid, threadsperblock](A_dary, B_dary)
+    B_dary.copy_to_host(B)
+
+@cuda.jit
+def ata_add_cuda(A, B):
+    i, j = cuda.grid(2)
+    if i < A.shape[1] and j < A.shape[1]:
+        B[i, j] += A[0, i] * A[0, j]
 
 
 def add_weight(i1, w1, i2, w2, bias):
