@@ -44,7 +44,7 @@ LRDirect = nib.load(file2).dataobj[:, :-1, :]
 # Upscale (bilinear interpolation)
 # LR = zoom(downscaled_LR, 2, order=1)
 
-HR_Blend = blend_image(LR, LRDirect, 5)
+HR_Blend = blend_image(LR, LRDirect, 10)
 ni_img = nib.Nifti1Image(HR_Blend, np.eye(4))
 nib.save(ni_img, '0outputt3_gg.nii.gz')
 

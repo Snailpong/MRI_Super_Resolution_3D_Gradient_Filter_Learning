@@ -20,9 +20,6 @@ from util import *
 from filterVariable import *
 
 # Construct an empty matrix Q, V uses the corresponding LR and HR, h is the filter, three hashmaps are Angle, Strength, Coherence, t
-# Q = cp.zeros((Q_total, filter_volume, filter_volume))
-# V = cp.zeros((Q_total, filter_volume, 1))
-
 Q = np.zeros((Q_total, pixel_type, filter_volume, filter_volume))
 V = np.zeros((Q_total, pixel_type, filter_volume, 1))
 h = np.zeros((Q_total, pixel_type, filter_volume))
@@ -51,13 +48,10 @@ for idx, file in enumerate(fileList):
     # Normalized to [0, 1]
     HR = HR / np.max(HR)
 
-    # Using k-space domain
-    #mat_file2 = np.array(nib.load(fileLRList[idx]).dataobj)
-    #LR = mat_file2 / np.max(mat)
-
     # Using Image domain
     print('Making LR...', end='', flush=True)
-    LR = get_lr_kspace(HR)
+    #LR = get_lr_kspace(HR)
+    LR = get_lr_interpolation(HR)
 
     # Dog-Sharpening
     print('\rSharpening...', end='', flush=True)
@@ -65,24 +59,12 @@ for idx, file in enumerate(fileList):
 
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
-    # Using Cupy
-    # HR = np.array(HR)
-    # LR = np.array(LR)
-
     [x_use, y_use, z_use] = crop_black(LR)
     print("x: ", x_use, "y: ", y_use, "z: ", z_use)
 
     xRange = range(max(filter_half, x_use[0] - filter_half), min(LR.shape[0] - filter_half, x_use[1] + filter_half))
     yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
     zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
-
-    # xRange = range(80,180)
-    # yRange = range(105,205)
-    # zRange = range(80,180)
-
-    # xRange = range(60,200)
-    # yRange = range(85,225)
-    # zRange = range(60,200)
 
 
     # Iterate over each pixel
@@ -113,7 +95,6 @@ for idx, file in enumerate(fileList):
                 j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
                 t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
                 
-                #A = cp.array(patch.ravel())
                 A = np.matrix(patch.ravel())
                 x = HR[xP, yP, zP]
 

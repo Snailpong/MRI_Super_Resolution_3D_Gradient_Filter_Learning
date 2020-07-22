@@ -73,6 +73,15 @@ def clip(im, low, high):
                 elif im[i, j, k] > high:
                     im[i, j, k] = high
 
+@njit(parallel=True)
+def clip_zero(im):
+    H, W, D = im.shape
+    for i in prange(H):
+        for j in prange(W):
+            for k in prange(D):
+                if im[i, j, k] < 0:
+                    im[i, j, k] = 0
+
 
 @njit
 def ct_descriptor(im):

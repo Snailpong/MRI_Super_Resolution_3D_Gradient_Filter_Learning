@@ -55,7 +55,8 @@ for idx, file in enumerate(fileList):
 
     # Using Image domain
     print('Making LR...', end='', flush=True)
-    LR = get_lr_kspace(HR)
+    #LR = get_lr_kspace(HR)
+    LR = get_lr_interpolation(HR)
 
     ni_img = nib.Nifti1Image(LR, np.eye(4))
     nib.save(ni_img, str(idx) + 'LR.nii.gz')
@@ -114,7 +115,7 @@ for idx, file in enumerate(fileList):
     ni_img = nib.Nifti1Image(LRDirect, np.eye(4))
     nib.save(ni_img, str(idx) + 'outputt2_gg.nii.gz')
 
-    HR_Blend = blend_image(LR.get(), LRDirect, 5)
+    HR_Blend = blend_image(LR, LRDirect, 5)
     ni_img = nib.Nifti1Image(HR_Blend, np.eye(4))
     nib.save(ni_img, str(idx) + 'outputt3_gg.nii.gz')
 

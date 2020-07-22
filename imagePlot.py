@@ -21,8 +21,8 @@ from filterVariable import *
 
 
 file = "test/T1w_acpc_dc_restore_brain_101410.nii.gz"
-#file2 = "result/071907_0outputt3_gg.nii.gz"
-file2 = "0outputt3_gg.nii.gz"
+file2 = "result/071907_0outputt3_gg.nii.gz"
+#file2 = "0outputt3_gg.nii.gz"
 
 
 # Load NIfTI Image
@@ -41,7 +41,7 @@ print(np.min(HR))
 print(np.min(LR))
 print(np.min(Result))
 
-clip(Result, 0, LR_max)
+clip(Result, 0, 1200)
 LR = LR * (np.max(HR) / np.max(LR))
 Result = Result * (np.max(HR) / np.max(Result))
 
