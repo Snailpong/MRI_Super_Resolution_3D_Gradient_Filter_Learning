@@ -62,10 +62,13 @@ for idx, file in enumerate(fileList):
     [x_use, y_use, z_use] = crop_black(LR)
     print("x: ", x_use, "y: ", y_use, "z: ", z_use)
 
-    xRange = range(max(filter_half, x_use[0] - filter_half), min(LR.shape[0] - filter_half, x_use[1] + filter_half))
-    yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
-    zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
+    # xRange = range(max(filter_half, x_use[0] - filter_half), min(LR.shape[0] - filter_half, x_use[1] + filter_half))
+    # yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
+    # zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
 
+    xRange = range(0, LR.shape[0])
+    yRange = range(0, LR.shape[1])
+    zRange = range(0, LR.shape[2])
 
     # Iterate over each pixel
     for xP in xRange:
