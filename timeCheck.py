@@ -9,11 +9,14 @@ import nibabel as nib
 
 import time
 import random
+import pickle
 
 from hashTable import hashtable
 from getMask import getMask, crop_black
 from filterVariable import *
 from util import *
+
+RANGES = 68000
 
 # Construct an empty matrix Q, V uses the corresponding LR and HR, h is the filter, three hashmaps are Angle, Strength, Coherence, t
 # Q = cp.zeros((Q_total, filter_volume, filter_volume))
@@ -54,9 +57,14 @@ start = time.time()
 print("Sharpening...", end='', flush=True)
 #HR = dog_sharpener(HR)
 print('sharpening time: ', time.time() - start)
-print(np.sum(HR))
 
 [Lgx, Lgy, Lgz] = np.gradient(LR)
+
+
+jtS = np.zeros((RANGES, 2), np.int16)
+xS = np.zeros((RANGES), np.float32)
+patchS = np.zeros((RANGES, filter_volume))
+
 
 Q = np.zeros((Q_total, pixel_type, filter_volume, filter_volume))
 V = np.zeros((Q_total, pixel_type, filter_volume, 1))
@@ -148,17 +156,18 @@ def addNumba(A, B):
 # tT = cp.zeros((Q_total))
 #
 # Iterate over each pixel
-for i in range(500):
+for i in range(RANGES):
     #print(np.max(LR[xP]))
-    print(i, "/", 500, end='\r', flush=True)
-    # xP = np.random.choice(xRange, 1)[0]
-    # yP = np.random.choice(yRange, 1)[0]
-    # zP = np.random.choice(zRange, 1)[0]
-    xP = i // 50 + 120
-    yP = i % 50 + 140
-    zP = i % 17 + 120
+    
+    xP = np.random.choice(xRange, 1)[0]
+    yP = np.random.choice(yRange, 1)[0]
+    zP = np.random.choice(zRange, 1)[0]
+    # xP = i // 50 + 120
+    # yP = i % 50 + 140
+    # zP = i % 17 + 120
 
     start = time.time()
+    print(i, "/", RANGES, end='\r', flush=True)
 
     # Take patch
 
@@ -225,10 +234,11 @@ for i in range(500):
     # else:
     #     coherence = 1
 
-    #angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
+    angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
 
     if i != 0:
         check2 += time.time() - start
+    start = time.time()
 
     
     # Compressed vector space
@@ -236,23 +246,31 @@ for i in range(500):
     t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
 
 
-    #A = np.matrix(patch.ravel())
-    A = patch.reshape(1, -1)
-    hh = h[j, t].reshape(1, -1)
 
-    LRDirect[xP][yP][zP] = max(np.matmul(hh, A.T)[0, 0], 0)
+    #A = np.matrix(patch.ravel())
+    #A = patch.reshape(1, -1)
+    pk = patch.reshape(-1)
+    hh = h[j, t].reshape(1, -1)
 
     x = HR[xP, yP, zP]
 
-    
-
-    B = Q[j, t]
-
-    
+    check3 += time.time() - start
     start = time.time()
 
+
+    jtS[i] = np.array([j, t])
+    xS[i] = x
+
+    check4 += time.time() - start
+    start = time.time()
+
+
+    patchS[i] = pk
     
-   # tT[j] += 1
+
+    
+    
+
 
     # Save the corresponding HashMap
     # Ac = cp.array(A)
@@ -272,47 +290,34 @@ for i in range(500):
 
     #ata_add_cuda_all(A, Q[j, t])
 
-    
-
-    threadsperblock = (32, 32)
-    blockspergrid_x = int(math.ceil(A.shape[1] / threadsperblock[0]))
-    blockspergrid_y = int(math.ceil(A.shape[1] / threadsperblock[1]))
-    blockspergrid = (blockspergrid_x, blockspergrid_y)
-
-    A_dary = cuda.to_device(A)
-    B_dary = cuda.device_array(B.shape, B.dtype)
-
-    check3 += time.time() - start
-    start = time.time()
-
-    
-
-
-    ata_add_cuda[blockspergrid, threadsperblock](A_dary, B_dary)
-
-    check4 += time.time() - start
-    start = time.time()
-
-
-
-    B_dary.copy_to_host(B)
-
-
-
     #addNumba(Q[j, t], ATA)
     #Q[j, t] += ATA
     #
 
     check5 += time.time() - start
-    start = time.time()
+    
 
+    
 
+    #V[j, t] += np.dot(A.T, x)
 
-    V[j, t] += np.dot(A.T, x)
-
-    check6 += time.time() - start
+    
 
 #print(tT)
+
+start = time.time()
+
+for i in prange(RANGES):
+    j, t = jtS[i]
+    patchT = patchS[i].reshape(1, -1)
+
+    #Q[j, t] += np.dot(patchT.T, patchT)
+    ata_add(patchT, Q[j, t])
+    V[j, t] += np.dot(patchT.T, xS[i])
+        
+
+check6 += time.time() - start
+
 
 print("check1:", check1)
 print("check2:", check2)

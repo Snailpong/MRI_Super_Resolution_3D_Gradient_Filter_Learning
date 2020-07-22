@@ -167,12 +167,6 @@ def ata_add_cuda_all(A, B):
     A_dary = cuda.to_device(A)
     B_dary = cuda.device_array(B.shape, B.dtype)
 
-    global check4
-
-    check4 += time.time() - start
-    start = time.time()
-
-
     ata_add_cuda[blockspergrid, threadsperblock](A_dary, B_dary)
     B_dary.copy_to_host(B)
 

@@ -3,7 +3,7 @@ import glob
 import time
 
 import numpy as np
-from numba import jit
+from numba import jit, prange
 
 import scipy.sparse as sparse
 from scipy.sparse.linalg import cg
@@ -38,7 +38,6 @@ weight = np.array(weight, dtype=np.float32)
 
 start = time.time()
 
-
 for idx, file in enumerate(fileList):
     print('\n[' + str(idx+1), '/', str(len(fileList)) + ']\t', file)
 
@@ -55,7 +54,7 @@ for idx, file in enumerate(fileList):
 
     # Dog-Sharpening
     print('\rSharpening...', end='', flush=True)
-    HR = dog_sharpener(HR)
+    #HR = dog_sharpener(HR)
 
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
@@ -66,16 +65,23 @@ for idx, file in enumerate(fileList):
     yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
     zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
 
+    total_yz = (yRange[-1] - yRange[0]) * (zRange[-1] - zRange[0])
+    start = time.time()
+
 
     # Iterate over each pixel
     for xP in xRange:
-        
-        for yP in yRange:
+        jtS = np.zeros((total_yz, 2), np.int16)
+        xS = np.zeros((total_yz), np.float32)
+        patchS = np.zeros((total_yz, filter_volume))
 
-            print('\r', xP - xRange[0], "/", xRange[-1] - xRange[0], '\t',
-                yP - yRange[0], "/", yRange[-1] - yRange[0], end='', flush=True)
 
-            for zP in zRange:
+        print('{} / {}, last {} s '.format(xP - xRange[0], xRange[-1] - xRange[0], time.time() - start), end='', flush=True)
+        start = time.time()
+        times = 0
+
+        for yP in prange(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half)):
+            for zP in prange(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half)):
                 patch = LR[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
                         zP - filter_half: zP + (filter_half + 1)]
 
@@ -83,11 +89,11 @@ for idx, file in enumerate(fileList):
                         continue
 
                 gx = Lgx[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
-                     zP - filter_half: zP + (filter_half + 1)]
+                        zP - filter_half: zP + (filter_half + 1)]
                 gy = Lgy[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
-                     zP - filter_half: zP + (filter_half + 1)]
+                        zP - filter_half: zP + (filter_half + 1)]
                 gz = Lgz[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
-                     zP - filter_half: zP + (filter_half + 1)]
+                        zP - filter_half: zP + (filter_half + 1)]
 
                 # Computational characteristics
                 angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
@@ -96,14 +102,26 @@ for idx, file in enumerate(fileList):
                 j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
                 t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
                 
-                A = np.matrix(patch.ravel())
+                pk = patch.reshape((-1))
                 x = HR[xP, yP, zP]
 
-                # Save the corresponding HashMap
-                ata_add(A, Q[j, t])
-                V[j, t] += np.dot(A.T, x)
+                jtS[times] = np.array([j, t])
+                xS[times] = x
+                patchS[times] = pk
 
-    #print(tT)
+                times += 1
+
+        print('{}  \r'.format(time.time() - start), end='', flush=True)
+
+        for i in prange(times):
+            j, t = jtS[i]
+            patchT = patchS[i].reshape(1, -1)
+
+            #Q[j, t] += np.dot(patchT.T, patchT)
+            ata_add(patchT, Q[j, t])
+            V[j, t] += np.dot(patchT.T, xS[i])
+
+
 
 if str(type(Q)) == '<class \'cupy.core.core.ndarray\'>':
     Q = Q.get()
