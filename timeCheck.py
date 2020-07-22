@@ -172,11 +172,12 @@ for i in range(500):
         zP - filter_half : zP + (filter_half + 1)]
 
     check1 += time.time() - start
-    start = time.time()
+    
 
     if not np.any(patch):
         continue
 
+    start = time.time()
 
     # Hashtable
     # G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
@@ -224,7 +225,10 @@ for i in range(500):
     # else:
     #     coherence = 1
 
-    angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
+    #angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
+
+    if i != 0:
+        check2 += time.time() - start
 
     
     # Compressed vector space
@@ -240,10 +244,11 @@ for i in range(500):
 
     x = HR[xP, yP, zP]
 
+    
+
     B = Q[j, t]
 
-    if i != 0:
-        check2 += time.time() - start
+    
     start = time.time()
 
     

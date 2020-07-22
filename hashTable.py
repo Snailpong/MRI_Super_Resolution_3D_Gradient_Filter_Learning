@@ -2,12 +2,11 @@
 
 import numpy as np
 import math
-from numba import jit
+from numba import jit, njit
 
 from filterVariable import *
 
-#@jit(nopython=True)
-@jit
+@njit
 def hashtable(gx, gy, gz, weight):
     G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
     x0 = np.dot(G.T, weight)
