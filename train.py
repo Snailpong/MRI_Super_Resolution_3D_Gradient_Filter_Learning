@@ -41,6 +41,8 @@ start = time.time()
 
 for idx, file in enumerate(fileList):
     fileName = file.split('/')[-1].split('\\')[-1]
+    if fileName in finished_files:
+        continue
     print('[' + str(idx+1), '/', str(len(fileList)) + ']\t', fileName)
 
     # Load NIfTI Image
@@ -131,7 +133,7 @@ for idx, file in enumerate(fileList):
     np.save("./arrays/Q", Q)
     np.save("./arrays/V", V)
     with open('./arrays/finished_files.pkl', 'wb') as f:
-        finished_files = pickle.load(f)
+        pickle.dump(finished_files, f)
 
 
 if str(type(Q)) == '<class \'cupy.core.core.ndarray\'>':
