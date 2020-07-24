@@ -1,46 +1,47 @@
 import os
 import glob
 import time
+import pickle
 
 import numpy as np
-from numba import jit
-
-import scipy.sparse as sparse
-from scipy.sparse.linalg import cg
-from scipy.ndimage import zoom
+import cupy as cp
+from numba import jit, prange
 
 import nibabel as nib
-import matplotlib.pyplot as plt
-import cv2
-#from scipy import sparse
 
-from hashTable import hashtable
-from getMask import crop_black
-from util import *
-from filterVariable import *
+from crop_black import crop_black
+from filter_constant import *
+from filter_func import *
+from get_lr import *
+from hashtable import hashtable
+from matrix_compute import *
 
-# Construct an empty matrix Q, V uses the corresponding LR and HR, h is the filter, three hashmaps are Angle, Strength, Coherence, t
-Q = np.zeros((Q_total, pixel_type, filter_volume, filter_volume))
-V = np.zeros((Q_total, pixel_type, filter_volume, 1))
-h = np.zeros((Q_total, pixel_type, filter_volume))
+# Construct an empty matrix Q, V uses the corresponding LR and HR
+if os.path.isfile('./arrays/Q.npy') and os.path.isfile('./arrays/V.npy'):
+    print('Importing exist arrays...', end=' ', flush=True)
+    Q = np.load("./arrays/Q.npy")
+    V = np.load("./arrays/V.npy")
+    with open('./arrays/finished_files.pkl', 'rb') as f:
+        finished_files = pickle.load(f)
+    print('Done', flush=True)
+    
+else:
+    Q = np.zeros((Q_TOTAL, PIXEL_TYPE, FILTER_VOL, FILTER_VOL))
+    V = np.zeros((Q_TOTAL, PIXEL_TYPE, FILTER_VOL, 1))
+    finished_files = []
 
 dataDir="./train/*"
-dataLRDir="./train_low/*"
 
 fileList = [file for file in glob.glob(dataDir) if file.endswith(".nii.gz")]
-fileLRList = [file for file in glob.glob(dataLRDir) if file.endswith(".nii.gz")]
 
-# Matrix preprocessing
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
-weight = gaussian_3d((filter_length,filter_length,filter_length))
-weight = np.diag(weight.ravel())
-weight = np.array(weight, dtype=np.float32)
+weight = get_normalized_gaussian()
 
 start = time.time()
 
-
 for idx, file in enumerate(fileList):
-    print('\n[' + str(idx+1), '/', str(len(fileList)) + ']\t', file)
+    fileName = file.split('/')[-1].split('\\')[-1]
+    print('[' + str(idx+1), '/', str(len(fileList)) + ']\t', fileName)
 
     # Load NIfTI Image
     HR = nib.load(file).dataobj[:, :-1, :]
@@ -59,70 +60,84 @@ for idx, file in enumerate(fileList):
 
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
-    [x_use, y_use, z_use] = crop_black(LR)
+    [x_use, y_use, z_use] = crop_black(HR)
     print("x: ", x_use, "y: ", y_use, "z: ", z_use)
 
-    # xRange = range(max(filter_half, x_use[0] - filter_half), min(LR.shape[0] - filter_half, x_use[1] + filter_half))
-    # yRange = range(max(filter_half, y_use[0] - filter_half), min(LR.shape[1] - filter_half, y_use[1] + filter_half))
-    # zRange = range(max(filter_half, z_use[0] - filter_half), min(LR.shape[2] - filter_half, z_use[1] + filter_half))
+    xRange = range(max(FILTER_HALF, x_use[0] - FILTER_HALF), min(LR.shape[0] - FILTER_HALF, x_use[1] + FILTER_HALF))
+    yRange = prange(max(FILTER_HALF, y_use[0] - FILTER_HALF), min(LR.shape[1] - FILTER_HALF, y_use[1] + FILTER_HALF))
+    zRange = prange(max(FILTER_HALF, z_use[0] - FILTER_HALF), min(LR.shape[2] - FILTER_HALF, z_use[1] + FILTER_HALF))
 
-    xRange = range(0, LR.shape[0])
-    yRange = range(0, LR.shape[1])
-    zRange = range(0, LR.shape[2])
+    # xRange = range(FILTER_HALF, LR.shape[0] - FILTER_HALF)
+    # yRange = prange(FILTER_HALF, LR.shape[1] - FILTER_HALF)
+    # zRange = prange(FILTER_HALF, LR.shape[2] - FILTER_HALF)
+
+    start = time.time()
+
+    patchS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
+    xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
+
 
     # Iterate over each pixel
     for xP in xRange:
-        
+
+        print('\r{} / {}    last {} s '.format(xP - xRange[0], xRange[-1] - xRange[0], '%.3f' % (time.time() - start)), end='', flush=True)
+        start = time.time()
+
         for yP in yRange:
-
-            print('\r', xP - xRange[0], "/", xRange[-1] - xRange[0], '\t',
-                yP - yRange[0], "/", yRange[-1] - yRange[0], end='', flush=True)
-
             for zP in zRange:
-                patch = LR[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
-                        zP - filter_half: zP + (filter_half + 1)]
+                patch = LR[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
 
                 if not np.any(patch):
                         continue
 
-                gx = Lgx[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
-                     zP - filter_half: zP + (filter_half + 1)]
-                gy = Lgy[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
-                     zP - filter_half: zP + (filter_half + 1)]
-                gz = Lgz[xP - filter_half: xP + (filter_half + 1), yP - filter_half: yP + (filter_half + 1),
-                     zP - filter_half: zP + (filter_half + 1)]
+                gx = Lgx[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+                gy = Lgy[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+                gz = Lgz[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
 
                 # Computational characteristics
                 angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
 
                 # Compressed vector space
-                j = angle_p * Qangle_t * Qcoherence * Qstrength + angle_t * Qcoherence * Qstrength + strength * Qcoherence + coherence
+                j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
                 t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
                 
-                A = np.matrix(patch.ravel())
+                pk = patch.reshape((-1))
                 x = HR[xP, yP, zP]
 
-                # Save the corresponding HashMap
-                ata_add(A, Q[j, t])
-                V[j, t] += np.dot(A.T, x)
+                patchS[j][t].append(pk)
+                xS[j][t].append(x)
 
-    #print(tT)
+        # Compute Q, V in 10 times
+        if xP % 10 == 9 or xP == xRange[-1]:
+            print('\t Computing Q, V... ', end='', flush=True)
+            for j in prange(Q_TOTAL):
+                for t in prange(PIXEL_TYPE):
+                    if len(xS[j][t]) != 0:
+                        A = cp.array(patchS[j][t])
+                        b = cp.array(xS[j][t]).reshape(-1, 1)
+
+                        Q[j, t] += cp.dot(A.T, A).get()
+                        V[j, t] += cp.dot(A.T, b).get()
+
+            patchS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
+            xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
+            print('\r', ' ' * 30, 'last QV', '%.3f' % (time.time() - start), 's', end='', flush=True)
+
+    finished_files.append(file.split('/')[-1].split('\\')[-1])
+    np.save("./arrays/Q", Q)
+    np.save("./arrays/V", V)
+    with open('./arrays/finished_files.pkl', 'wb') as f:
+        finished_files = pickle.load(f)
+
 
 if str(type(Q)) == '<class \'cupy.core.core.ndarray\'>':
     Q = Q.get()
     V = V.get()
 
-np.save("./Q", Q)
-np.save("./V", V)
 
+compute_h(Q, V)
 
-print("\nComputing H...")
-# Set the train step
-
-for j in range(Q_total):
-    for t in range(pixel_type):
-        print(j, "/", Q_total, end='\r', flush=True)
-        h[j,t] = sparse.linalg.cg(Q[j,t], V[j,t])[0]
-
-print('Train is off in {} minutes'.format((time.time() - start) // 60))
-np.save('./filter_array/lowR4', h)

@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import math
 from numba import jit, njit
 
-from filterVariable import *
+from filter_constant import *
 
 @njit
 def hashtable(gx, gy, gz, weight):
@@ -35,8 +33,8 @@ def hashtable(gx, gy, gz, weight):
     coherence = (lamda1 - lamda2) / (lamda1 + lamda2 + 0.0001)
 
     # Quantization
-    angle_p = int(angle_p / math.pi * Qangle_p - 0.0001)
-    angle_t = int(angle_t / math.pi * Qangle_t - 0.0001)
+    angle_p = int(angle_p / math.pi * Q_ANGLE_P - 0.0001)
+    angle_t = int(angle_t / math.pi * Q_ANGLE_T - 0.0001)
     # strength = int(strength * Qstrength - 0.0001)
     # coherence = int(coherence * Qcoherence - 0.0001)
 
