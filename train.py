@@ -1,10 +1,11 @@
-import os
 import glob
-import time
+import os
 import pickle
+import time
+import random
 
-import numpy as np
 import cupy as cp
+import numpy as np
 from numba import jit, prange
 
 import nibabel as nib
@@ -63,15 +64,14 @@ for idx, file in enumerate(fileList):
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
     [x_use, y_use, z_use] = crop_black(HR)
-    print("x: ", x_use, "y: ", y_use, "z: ", z_use)
 
-    xRange = range(max(FILTER_HALF, x_use[0] - FILTER_HALF), min(LR.shape[0] - FILTER_HALF, x_use[1] + FILTER_HALF))
-    yRange = prange(max(FILTER_HALF, y_use[0] - FILTER_HALF), min(LR.shape[1] - FILTER_HALF, y_use[1] + FILTER_HALF))
-    zRange = prange(max(FILTER_HALF, z_use[0] - FILTER_HALF), min(LR.shape[2] - FILTER_HALF, z_use[1] + FILTER_HALF))
+    x_range = range(max(FILTER_HALF, x_use[0] - FILTER_HALF), min(LR.shape[0] - FILTER_HALF, x_use[1] + FILTER_HALF))
+    y_range = range(max(FILTER_HALF, y_use[0] - FILTER_HALF), min(LR.shape[1] - FILTER_HALF, y_use[1] + FILTER_HALF))
+    z_range = range(max(FILTER_HALF, z_use[0] - FILTER_HALF), min(LR.shape[2] - FILTER_HALF, z_use[1] + FILTER_HALF))
 
-    # xRange = range(FILTER_HALF, LR.shape[0] - FILTER_HALF)
-    # yRange = prange(FILTER_HALF, LR.shape[1] - FILTER_HALF)
-    # zRange = prange(FILTER_HALF, LR.shape[2] - FILTER_HALF)
+    xyz_range = [(x,y,z) for x in x_range for y in y_range for z in z_range]
+    sample_range = random.sample(xyz_range, len(xyz_range) // TRAIN_DIV)
+    split_range = list(chunks(sample_range, len(sample_range) // TRAIN_STP - 1))
 
     start = time.time()
 
@@ -80,54 +80,52 @@ for idx, file in enumerate(fileList):
 
 
     # Iterate over each pixel
-    for xP in xRange:
+    for ix, point in enumerate(split_range):
 
-        print('\r{} / {}    last {} s '.format(xP - xRange[0], xRange[-1] - xRange[0], '%.3f' % (time.time() - start)), end='', flush=True)
         start = time.time()
 
-        for yP in yRange:
-            for zP in zRange:
-                patch = LR[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+        for xP, yP, zP in point:
+            patch = LR[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
 
-                if not np.any(patch):
-                        continue
+            if not np.any(patch):
+                    continue
 
-                gx = Lgx[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
-                gy = Lgy[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
-                gz = Lgz[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+            gx = Lgx[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+            gy = Lgy[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+            gz = Lgz[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
 
-                # Computational characteristics
-                angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
+            # Computational characteristics
+            angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
 
-                # Compressed vector space
-                j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
-                t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
-                
-                pk = patch.reshape((-1))
-                x = HR[xP, yP, zP]
+            # Compressed vector space
+            j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
+            t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
+            
+            pk = patch.reshape((-1))
+            x = HR[xP, yP, zP]
 
-                patchS[j][t].append(pk)
-                xS[j][t].append(x)
+            patchS[j][t].append(pk)
+            xS[j][t].append(x)
 
-        # Compute Q, V in 10 times
-        if xP % 10 == 9 or xP == xRange[-1]:
-            print('\t Computing Q, V... ', end='', flush=True)
-            for j in prange(Q_TOTAL):
-                for t in prange(PIXEL_TYPE):
-                    if len(xS[j][t]) != 0:
-                        A = cp.array(patchS[j][t])
-                        b = cp.array(xS[j][t]).reshape(-1, 1)
+        print('\r{} / {}    last {} s '.format(ix, TRAIN_STP, '%.3f' % (time.time() - start)), end='', flush=True)
 
-                        Q[j, t] += cp.dot(A.T, A).get()
-                        V[j, t] += cp.dot(A.T, b).get()
+        # Compute Q, V
+        for j in prange(Q_TOTAL):
+            for t in prange(PIXEL_TYPE):
+                if len(xS[j][t]) != 0:
+                    A = cp.array(patchS[j][t])
+                    b = cp.array(xS[j][t]).reshape(-1, 1)
 
-            patchS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
-            xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
-            print('\r', ' ' * 30, 'last QV', '%.3f' % (time.time() - start), 's', end='', flush=True)
+                    Q[j, t] += cp.dot(A.T, A).get()
+                    V[j, t] += cp.dot(A.T, b).get()
+
+        patchS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
+        xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
+        print('   QV', '%.3f' % (time.time() - start), 's', end='', flush=True)
 
     finished_files.append(file.split('/')[-1].split('\\')[-1])
     np.save("./arrays/Q", Q)

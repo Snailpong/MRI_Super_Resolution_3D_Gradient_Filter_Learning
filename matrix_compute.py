@@ -86,3 +86,7 @@ def compute_h(Q, V):
 
     np.save('./arrays/lowR4', h)
     print('Computing H is off in {} minutes'.format((time.time() - start) // 60))
+
+def chunks(l, n):
+    for i in range(0, len(l), n):
+        yield l[i:i+n]

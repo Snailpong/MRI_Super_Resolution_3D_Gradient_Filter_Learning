@@ -6,7 +6,7 @@ def crop_black(array):
     if str(type(array)) == '<class \'cupy.core.core.ndarray\'>':
         array = array.get()
 
-    print ('zero ratio:', np.count_nonzero(array==0)*100 / ((array.shape[0])*(array.shape[1])*(array.shape[2])))
+    #print ('zero ratio:', np.count_nonzero(array==0)*100 / ((array.shape[0])*(array.shape[1])*(array.shape[2])))
 
     x_use=[]
     y_use=[]
