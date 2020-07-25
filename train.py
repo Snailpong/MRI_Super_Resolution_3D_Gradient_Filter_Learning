@@ -44,7 +44,7 @@ for idx, file in enumerate(fileList):
     fileName = file.split('/')[-1].split('\\')[-1]
     if fileName in finished_files:
         continue
-    print('[' + str(idx+1), '/', str(len(fileList)) + ']\t', fileName)
+    print('\n[' + str(idx+1), '/', str(len(fileList)) + ']   ', fileName)
 
     # Load NIfTI Image
     HR = nib.load(file).dataobj[:, :-1, :]
@@ -79,12 +79,13 @@ for idx, file in enumerate(fileList):
     xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
 
 
-    # Iterate over each pixel
-    for ix, point in enumerate(split_range):
+    for split_idx, points in enumerate(split_range):
 
+        filestart = time.time()
         start = time.time()
 
-        for xP, yP, zP in point:
+        for point_idx in prange(len(points)):
+            xP, yP, zP = points[point_idx]
             patch = LR[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
                     zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
 
@@ -111,17 +112,41 @@ for idx, file in enumerate(fileList):
             patchS[j][t].append(pk)
             xS[j][t].append(x)
 
-        print('\r{} / {}    last {} s '.format(ix, TRAIN_STP, '%.3f' % (time.time() - start)), end='', flush=True)
-
+        print('\r{} / {}    last {} s '.format(split_idx, TRAIN_STP, '%.3f' % (time.time() - start)), end='', flush=True)
+        start = time.time()
+        # check1 = 0
+        # check2 = 0
+        # check3 = 0
+        # check4 = 0
         # Compute Q, V
-        for j in prange(Q_TOTAL):
-            for t in prange(PIXEL_TYPE):
+
+        for j in range(Q_TOTAL):
+            for t in range(PIXEL_TYPE):
                 if len(xS[j][t]) != 0:
+                    time11 = time.time()
                     A = cp.array(patchS[j][t])
                     b = cp.array(xS[j][t]).reshape(-1, 1)
+                    Qa = cp.array(Q[j, t])
+                    Va = cp.array(V[j, t])
+                    # check1 += time.time() - time11
+                    # time11 = time.time()
 
-                    Q[j, t] += cp.dot(A.T, A).get()
-                    V[j, t] += cp.dot(A.T, b).get()
+                    Qa += cp.dot(A.T, A)
+                    Va += cp.dot(A.T, b)
+
+                    # check2 += time.time() - time11
+                    # time11 = time.time()
+
+                    Q[j, t] = Qa.get()
+                    V[j, t] = Va.get()
+
+                    # check3 += time.time() - time11
+                    # time11 = time.time()
+                    # check4 += time.time() - time11
+
+                    
+
+        # print('\n', check1, check2, check3, check4)
 
         patchS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
         xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
@@ -132,6 +157,7 @@ for idx, file in enumerate(fileList):
     np.save("./arrays/V", V)
     with open('./arrays/finished_files.pkl', 'wb') as f:
         pickle.dump(finished_files, f)
+    print('          in {} min '.format((time.time() - filestart) // 60), end='', flush=True)
 
 
 if str(type(Q)) == '<class \'cupy.core.core.ndarray\'>':
