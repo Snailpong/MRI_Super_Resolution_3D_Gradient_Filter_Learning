@@ -19,20 +19,14 @@ dataDir="./test/*"
 
 fileList = [file for file in glob.glob(dataDir) if file.endswith(".nii.gz")]
 
-# Matrix preprocessing
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
-weight = gaussian_3d((FILTER_LEN, FILTER_LEN, FILTER_LEN))
-weight = np.diag(weight.ravel())
-weight = np.array(weight, dtype=np.float32)
+weight = get_normalized_gaussian()
 
 h = np.load("./arrays/lowR4.npy")
 h = np.array(h)
 
 for idx, file in enumerate(fileList):
     print(idx+1, "/", len(fileList), "\t", file)
-
-    #LR = np.array(nib.load(file).dataobj)
-
 
     # Load NIfTI Image
     mat_file = nib.load(file)
@@ -56,12 +50,6 @@ for idx, file in enumerate(fileList):
 
     LR = np.array(LR)
     LRDirect = np.zeros((LR.shape[0], LR.shape[1], LR.shape[2]))
-
-    
-
-    # xRange = range(FILTER_HALF, LR.shape[0] - FILTER_HALF)
-    # yRange = prange(FILTER_HALF, LR.shape[1] - FILTER_HALF)
-    # zRange = prange(FILTER_HALF, LR.shape[2] - FILTER_HALF)
 
     xRange = range(max(FILTER_HALF, x_use[0] - FILTER_HALF), min(LR.shape[0] - FILTER_HALF, x_use[1] + FILTER_HALF))
     yRange = prange(max(FILTER_HALF, y_use[0] - FILTER_HALF), min(LR.shape[1] - FILTER_HALF, y_use[1] + FILTER_HALF))
@@ -101,10 +89,10 @@ for idx, file in enumerate(fileList):
 
             
     ni_img = nib.Nifti1Image(LRDirect, np.eye(4))
-    nib.save(ni_img, str(idx) + 'outputt2_gg.nii.gz')
+    nib.save(ni_img, str(idx) + 'outputt2.nii.gz')
 
-    HR_Blend = blend_image(LR, LRDirect, 5)
+    HR_Blend = blend_image(LR, LRDirect, BLEND_THRESHOLD)
     ni_img = nib.Nifti1Image(HR_Blend, np.eye(4))
-    nib.save(ni_img, str(idx) + 'outputt3_gg.nii.gz')
+    nib.save(ni_img, str(idx) + 'outputt3.nii.gz')
 
 print("Test is off")

@@ -14,7 +14,7 @@ from crop_black import crop_black
 from filter_constant import *
 from filter_func import *
 from get_lr import *
-from hashtable import hashtable
+from hashtable import *
 from matrix_compute import *
 
 # Construct an empty matrix Q, V uses the corresponding LR and HR
@@ -44,7 +44,7 @@ for idx, file in enumerate(fileList):
     fileName = file.split('/')[-1].split('\\')[-1]
     if fileName in finished_files:
         continue
-    print('\n[' + str(idx+1), '/', str(len(fileList)) + ']   ', fileName)
+    print('\r[' + str(idx+1), '/', str(len(fileList)) + ']   ', fileName)
 
     # Load NIfTI Image
     HR = nib.load(file).dataobj[:, :-1, :]
@@ -73,7 +73,7 @@ for idx, file in enumerate(fileList):
     sample_range = random.sample(xyz_range, len(xyz_range) // TRAIN_DIV)
     split_range = list(chunks(sample_range, len(sample_range) // TRAIN_STP - 1))
 
-    start = time.time()
+    filestart = time.time()
 
     patchS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
     xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
@@ -81,7 +81,6 @@ for idx, file in enumerate(fileList):
 
     for split_idx, points in enumerate(split_range):
 
-        filestart = time.time()
         start = time.time()
 
         for point_idx in prange(len(points)):
@@ -100,7 +99,8 @@ for idx, file in enumerate(fileList):
                     zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
 
             # Computational characteristics
-            angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
+            # angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)get_features
+            angle_p, angle_t, strength, coherence = get_features(gx, gy, gz, weight)
 
             # Compressed vector space
             j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
@@ -109,8 +109,13 @@ for idx, file in enumerate(fileList):
             pk = patch.reshape((-1))
             x = HR[xP, yP, zP]
 
-            patchS[j][t].append(pk)
-            xS[j][t].append(x)
+            try:
+                patchS[j][t].append(pk)
+                xS[j][t].append(x)
+            except:
+                print(angle_p, angle_t, strength, coherence)
+
+            
 
         print('\r{} / {}    last {} s '.format(split_idx, TRAIN_STP, '%.3f' % (time.time() - start)), end='', flush=True)
         start = time.time()
@@ -153,16 +158,23 @@ for idx, file in enumerate(fileList):
         print('   QV', '%.3f' % (time.time() - start), 's', end='', flush=True)
 
     finished_files.append(file.split('/')[-1].split('\\')[-1])
-    np.save("./arrays/Q", Q)
-    np.save("./arrays/V", V)
+    
+    print('                last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
+
+    if(idx == 10):
+        break
+
+    # np.save("./arrays/Q", Q)
+    # np.save("./arrays/V", V)
     with open('./arrays/finished_files.pkl', 'wb') as f:
         pickle.dump(finished_files, f)
-    print('          in {} min '.format((time.time() - filestart) // 60), end='', flush=True)
-
 
 if str(type(Q)) == '<class \'cupy.core.core.ndarray\'>':
     Q = Q.get()
     V = V.get()
+
+np.save("./arrays/Q", Q)
+np.save("./arrays/V", V)
 
 
 compute_h(Q, V)
