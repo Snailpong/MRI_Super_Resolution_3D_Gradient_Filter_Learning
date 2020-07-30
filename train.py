@@ -1,6 +1,4 @@
 import glob
-import os
-import pickle
 import time
 import random
 
@@ -10,26 +8,15 @@ from numba import jit, prange
 
 import nibabel as nib
 
-from crop_black import crop_black
+from crop_black import *
 from filter_constant import *
 from filter_func import *
 from get_lr import *
 from hashtable import *
 from matrix_compute import *
+from util import *
 
-# Construct an empty matrix Q, V uses the corresponding LR and HR
-if os.path.isfile('./arrays/Q.npy') and os.path.isfile('./arrays/V.npy'):
-    print('Importing exist arrays...', end=' ', flush=True)
-    Q = np.load("./arrays/Q.npy")
-    V = np.load("./arrays/V.npy")
-    with open('./arrays/finished_files.pkl', 'rb') as f:
-        finished_files = pickle.load(f)
-    print('Done', flush=True)
-    
-else:
-    Q = np.zeros((Q_TOTAL, PIXEL_TYPE, FILTER_VOL, FILTER_VOL))
-    V = np.zeros((Q_TOTAL, PIXEL_TYPE, FILTER_VOL, 1))
-    finished_files = []
+Q, V, finished_files = load_files()
 
 dataDir="./train/*"
 
@@ -44,80 +31,67 @@ for idx, file in enumerate(fileList):
     fileName = file.split('/')[-1].split('\\')[-1]
     if fileName in finished_files:
         continue
+
     print('\r[' + str(idx+1), '/', str(len(fileList)) + ']   ', fileName)
 
-    # Load NIfTI Image
-    HR = nib.load(file).dataobj[:, :-1, :]
+    
+    HR = nib.load(file).dataobj[:, :-1, :]  # Load NIfTI Image
+    HR = HR / np.max(HR)                    # Normalized to [0, 1]
 
-    # Normalized to [0, 1]
-    HR = HR / np.max(HR)
-
-    # Using Image domain
+    
     print('Making LR...', end='', flush=True)
-    #LR = get_lr_kspace(HR)
-    LR = get_lr_interpolation(HR)
+    #LR = get_lr_kspace(HR)         # Using Frequency domain
+    LR = get_lr_interpolation(HR)   # Using Image domain
 
     # Dog-Sharpening
     print('\rSharpening...', end='', flush=True)
     HR = dog_sharpener(HR)
 
     [Lgx, Lgy, Lgz] = np.gradient(LR)
-
-    [x_use, y_use, z_use] = crop_black(HR)
-
-    x_range = range(max(FILTER_HALF, x_use[0] - FILTER_HALF), min(LR.shape[0] - FILTER_HALF, x_use[1] + FILTER_HALF))
-    y_range = range(max(FILTER_HALF, y_use[0] - FILTER_HALF), min(LR.shape[1] - FILTER_HALF, y_use[1] + FILTER_HALF))
-    z_range = range(max(FILTER_HALF, z_use[0] - FILTER_HALF), min(LR.shape[2] - FILTER_HALF, z_use[1] + FILTER_HALF))
-
-    xyz_range = [(x,y,z) for x in x_range for y in y_range for z in z_range]
-    sample_range = random.sample(xyz_range, len(xyz_range) // TRAIN_DIV)
-    split_range = list(chunks(sample_range, len(sample_range) // TRAIN_STP - 1))
+    sampled_list = get_sampled_point_list(HR)
 
     filestart = time.time()
 
-    patchS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
-    xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
+    patchS, xS = init_buckets()
 
 
-    for split_idx, points in enumerate(split_range):
+    for split_idx, points in enumerate(sampled_list):
 
+        print('\r{} / {}'.format(split_idx + 1, TRAIN_STP), end='', flush=True)
         start = time.time()
 
         for point_idx in prange(len(points)):
             xP, yP, zP = points[point_idx]
-            patch = LR[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+            patch = LR[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
+                    zP - GRAD_LEN: zP + (GRAD_HALF + 1)]
 
             if not np.any(patch):
                     continue
 
-            gx = Lgx[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
-            gy = Lgy[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
-            gz = Lgz[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+            gx = Lgx[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
+                    zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
+            gy = Lgy[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
+                    zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
+            gz = Lgz[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
+                    zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
 
             # Computational characteristics
-            # angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)get_features
+            # angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
             angle_p, angle_t, strength, coherence = get_features(gx, gy, gz, weight)
 
             # Compressed vector space
             j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
-            t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
+            t = xP % FACTOR * (FACTOR ** 2) + yP % FACTOR * FACTOR + zP % FACTOR
             
-            pk = patch.reshape((-1))
+            pk = patch.reshape(-1)
             x = HR[xP, yP, zP]
 
-            try:
-                patchS[j][t].append(pk)
-                xS[j][t].append(x)
-            except:
-                print(angle_p, angle_t, strength, coherence)
+            patchS[j][t].append(pk)
+            xS[j][t].append(x)
 
             
 
-        print('\r{} / {}    last {} s '.format(split_idx, TRAIN_STP, '%.3f' % (time.time() - start)), end='', flush=True)
+        print('\r{} / {}    last {} s '.format(split_idx + 1, TRAIN_STP, '%.3f' % (time.time() - start)), end='', flush=True)
         start = time.time()
         # check1 = 0
         # check2 = 0
@@ -153,29 +127,28 @@ for idx, file in enumerate(fileList):
 
         # print('\n', check1, check2, check3, check4)
 
-        patchS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
-        xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
+        patchS, xS = init_buckets()
         print('   QV', '%.3f' % (time.time() - start), 's', end='', flush=True)
 
     finished_files.append(file.split('/')[-1].split('\\')[-1])
     
-    print('                last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
+    print(' ' * 20, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
-    if(idx == 10):
+    # Ask for saving Q, V 
+    try:
+        a = input_timer("\r Enter to save >> ", 10)
+        save_qv(Q, V, finished_files)
+    except TimeoutError as e:
+        pass
+
+    if(idx == 9):
         break
-
-    # np.save("./arrays/Q", Q)
-    # np.save("./arrays/V", V)
-    with open('./arrays/finished_files.pkl', 'wb') as f:
-        pickle.dump(finished_files, f)
+    
 
 if str(type(Q)) == '<class \'cupy.core.core.ndarray\'>':
     Q = Q.get()
     V = V.get()
 
-np.save("./arrays/Q", Q)
-np.save("./arrays/V", V)
-
-
+save_qv(Q, V, finished_files)
 compute_h(Q, V)
 

@@ -51,7 +51,7 @@ def hashtable(gx, gy, gz, weight):
     return angle_p, angle_t, int(strength), int(coherence)
 
 
-@njit
+#@njit
 def get_features(gx, gy, gz, weight):
     G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
     x0 = np.dot(G.T, weight)
@@ -71,6 +71,7 @@ def get_features(gx, gy, gz, weight):
         angle_t = math.pi - angle_t
 
     trace = l1 + l2 + l3
+    #trace = l1
     fa = math.sqrt(((l1-l2)**2+(l2-l3)**2+(l1-l3)**2)/(max(l1**2+l2**2+l3*2,1e-30))/2)
 
     # Quantization
@@ -84,9 +85,9 @@ def get_features(gx, gy, gz, weight):
     else:
         trace = 1
 
-    if fa < 0.1:
+    if fa < 0.05:
         fa = 0
-    elif fa > 0.3:
+    elif fa > 0.1:
         fa = 2
     else:
         fa = 1

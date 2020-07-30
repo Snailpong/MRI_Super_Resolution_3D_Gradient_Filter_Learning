@@ -22,8 +22,7 @@ fileList = [file for file in glob.glob(dataDir) if file.endswith(".nii.gz")]
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
 weight = get_normalized_gaussian()
 
-h = np.load("./arrays/lowR4.npy")
-h = np.array(h)
+h = np.load("./arrays/lowR4_072107_interpolation_10.npy")
 
 for idx, file in enumerate(fileList):
     print(idx+1, "/", len(fileList), "\t", file)
@@ -42,18 +41,12 @@ for idx, file in enumerate(fileList):
     ni_img = nib.Nifti1Image(LR, np.eye(4))
     nib.save(ni_img, str(idx) + 'LR.nii.gz')
 
-    [x_use, y_use, z_use] = crop_black(HR)
-    print("x: ", x_use, "y: ", y_use, "z: ", z_use)
-
-
     [Lgx, Lgy, Lgz] = np.gradient(LR)
 
     LR = np.array(LR)
     LRDirect = np.zeros((LR.shape[0], LR.shape[1], LR.shape[2]))
 
-    xRange = range(max(FILTER_HALF, x_use[0] - FILTER_HALF), min(LR.shape[0] - FILTER_HALF, x_use[1] + FILTER_HALF))
-    yRange = prange(max(FILTER_HALF, y_use[0] - FILTER_HALF), min(LR.shape[1] - FILTER_HALF, y_use[1] + FILTER_HALF))
-    zRange = prange(max(FILTER_HALF, z_use[0] - FILTER_HALF), min(LR.shape[2] - FILTER_HALF, z_use[1] + FILTER_HALF))
+    xRange, yRange, zRange = get_range(HR)
 
 
     start = time.time()
@@ -64,23 +57,24 @@ for idx, file in enumerate(fileList):
 
         for yP in yRange:
             for zP in zRange:
-                patch = LR[xP - FILTER_HALF : xP + (FILTER_HALF + 1), yP - FILTER_HALF : yP + (FILTER_HALF + 1),
-                        zP - FILTER_HALF : zP + (FILTER_HALF + 1)]
+                patch = LR[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
+                    zP - GRAD_LEN: zP + (GRAD_HALF + 1)]
 
                 if not np.any(patch):
                     continue
 
-                gx = Lgx[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
-                gy = Lgy[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                        zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
-                gz = Lgz[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+                gx = Lgx[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
+                    zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
+                gy = Lgy[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
+                        zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
+                gz = Lgz[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
+                        zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
 
                 [angle_p, angle_t, strength, coherence] = hashtable(gx, gy, gz, weight)
 
                 j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
                 t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
+
                 A = patch.reshape((1, -1))
                 hh = h[j][t].reshape((1, -1))
                 LRDirect[xP][yP][zP] = max(np.matmul(hh, A.T)[0, 0], 0)
