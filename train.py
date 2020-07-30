@@ -28,17 +28,17 @@ weight = get_normalized_gaussian()
 start = time.time()
 
 for idx, file in enumerate(fileList):
+    filestart = time.time()
+
     fileName = file.split('/')[-1].split('\\')[-1]
     if fileName in finished_files:
         continue
 
-    print('\r[' + str(idx+1), '/', str(len(fileList)) + ']   ', fileName)
+    print(' ' * 15, '\r[' + str(idx+1), '/', str(len(fileList)) + ']   ', fileName)
 
-    
     HR = nib.load(file).dataobj[:, :-1, :]  # Load NIfTI Image
-    HR = HR / np.max(HR)                    # Normalized to [0, 1]
+    HR = normalization_hr(HR)               # Normalized to [0, 1]
 
-    
     print('Making LR...', end='', flush=True)
     #LR = get_lr_kspace(HR)         # Using Frequency domain
     LR = get_lr_interpolation(HR)   # Using Image domain
@@ -50,20 +50,15 @@ for idx, file in enumerate(fileList):
     [Lgx, Lgy, Lgz] = np.gradient(LR)
     sampled_list = get_sampled_point_list(HR)
 
-    filestart = time.time()
-
-    patchS, xS = init_buckets()
-
-
     for split_idx, points in enumerate(sampled_list):
-
         print('\r{} / {}'.format(split_idx + 1, TRAIN_STP), end='', flush=True)
         start = time.time()
+        patchS, xS = init_buckets()
 
         for point_idx in prange(len(points)):
             xP, yP, zP = points[point_idx]
-            patch = LR[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
-                    zP - GRAD_LEN: zP + (GRAD_HALF + 1)]
+            patch = LR[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
 
             if not np.any(patch):
                     continue
@@ -76,8 +71,8 @@ for idx, file in enumerate(fileList):
                     zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
 
             # Computational characteristics
-            # angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
-            angle_p, angle_t, strength, coherence = get_features(gx, gy, gz, weight)
+            angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
+            # angle_p, angle_t, strength, coherence = get_features(gx, gy, gz, weight)
 
             # Compressed vector space
             j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
@@ -90,7 +85,6 @@ for idx, file in enumerate(fileList):
             xS[j][t].append(x)
 
             
-
         print('\r{} / {}    last {} s '.format(split_idx + 1, TRAIN_STP, '%.3f' % (time.time() - start)), end='', flush=True)
         start = time.time()
         # check1 = 0
@@ -123,23 +117,16 @@ for idx, file in enumerate(fileList):
                     # time11 = time.time()
                     # check4 += time.time() - time11
 
-                    
-
         # print('\n', check1, check2, check3, check4)
 
-        patchS, xS = init_buckets()
+        
         print('   QV', '%.3f' % (time.time() - start), 's', end='', flush=True)
 
-    finished_files.append(file.split('/')[-1].split('\\')[-1])
+    finished_files.append(fileName)
     
-    print(' ' * 20, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
+    print(' ' * 23, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
-    # Ask for saving Q, V 
-    try:
-        a = input_timer("\r Enter to save >> ", 10)
-        save_qv(Q, V, finished_files)
-    except TimeoutError as e:
-        pass
+    ask_save_qv(Q, V, finished_files)
 
     if(idx == 9):
         break

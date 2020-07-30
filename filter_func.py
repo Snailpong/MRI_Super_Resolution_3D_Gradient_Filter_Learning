@@ -30,7 +30,7 @@ def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
     B3 = blend_image(B2, D1)
     B3 = blend_image(input, B3)
 
-    output = B3
+    output = np.clip(B3, 0, 1)
     return output
 
 @njit(parallel=True)
@@ -130,7 +130,16 @@ def gaussian_3d(shape=(3,3,3), sigma=0.85):
     return h
 
 def get_normalized_gaussian():
-    weight = gaussian_3d((FILTER_LEN, FILTER_LEN, FILTER_LEN))
+    weight = gaussian_3d((GRAD_LEN, GRAD_LEN, GRAD_LEN))
     weight = np.diag(weight.ravel())
     weight = np.array(weight, dtype=np.float32)
     return weight
+
+def clipped_hr(hr):
+    clipvalue = np.sort(hr.ravel())[int(np.prod(hr.shape) * 0.999)]
+    hr = np.clip(hr, 0, clipvalue)
+    return hr
+
+def normalization_hr(hr):
+    hr = clipped_hr(hr)
+    return hr/hr.max()

@@ -7,7 +7,7 @@ from numba import jit, njit, prange
 
 import nibabel as nib
 
-from crop_black import crop_black
+from crop_black import *
 from filter_constant import *
 from filter_func import *
 from get_lr import *
@@ -22,16 +22,16 @@ fileList = [file for file in glob.glob(dataDir) if file.endswith(".nii.gz")]
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
 weight = get_normalized_gaussian()
 
-h = np.load("./arrays/lowR4_072107_interpolation_10.npy")
+h = np.load("./arrays/lowR4.npy")
 
 for idx, file in enumerate(fileList):
     print(idx+1, "/", len(fileList), "\t", file)
 
     # Load NIfTI Image
     mat_file = nib.load(file)
-    mat = np.array(mat_file.dataobj)
-    mat = mat[:, :-1, :]
-    HR = mat
+    HR = np.array(mat_file.dataobj)[:, :-1, :]
+    HR = clipped_hr(HR)
+    HR_max = HR.max()
 
     # Make LR
     print('Making LR...', end='', flush=True)
@@ -48,7 +48,6 @@ for idx, file in enumerate(fileList):
 
     xRange, yRange, zRange = get_range(HR)
 
-
     start = time.time()
 
     for xP in xRange:
@@ -57,8 +56,8 @@ for idx, file in enumerate(fileList):
 
         for yP in yRange:
             for zP in zRange:
-                patch = LR[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
-                    zP - GRAD_LEN: zP + (GRAD_HALF + 1)]
+                patch = LR[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
+                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
 
                 if not np.any(patch):
                     continue
@@ -73,15 +72,13 @@ for idx, file in enumerate(fileList):
                 [angle_p, angle_t, strength, coherence] = hashtable(gx, gy, gz, weight)
 
                 j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
-                t = xP % 2 * 4 + yP % 2 * 2 + zP % 2
+                t = xP % FACTOR * (FACTOR ** 2) + yP % FACTOR * FACTOR + zP % FACTOR
 
-                A = patch.reshape((1, -1))
-                hh = h[j][t].reshape((1, -1))
-                LRDirect[xP][yP][zP] = max(np.matmul(hh, A.T)[0, 0], 0)
+                AT = patch.reshape((1, -1))
+                hh = h[j][t].reshape((-1, 1))
+                LRDirect[xP][yP][zP] = np.dot(AT, hh)
 
-        
-
-            
+    LRDirect = np.clip(LRDirect, 0, HR_max)
     ni_img = nib.Nifti1Image(LRDirect, np.eye(4))
     nib.save(ni_img, str(idx) + 'outputt2.nii.gz')
 

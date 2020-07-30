@@ -4,7 +4,7 @@ Q_ANGLE_P = 8
 FILTER_LEN = 11
 FILTER_HALF = FILTER_LEN // 2
 
-GRAD_LEN = 11
+GRAD_LEN = 9
 GRAD_HALF = GRAD_LEN // 2
 
 # Do not edit!

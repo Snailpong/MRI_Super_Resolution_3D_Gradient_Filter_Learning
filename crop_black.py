@@ -2,6 +2,7 @@ import numpy as np
 import random
 
 from filter_constant import *
+from util import *
 
 def get_sampled_point_list(array):
     [x_range, y_range, z_range] = get_range(array)
@@ -16,9 +17,9 @@ def get_sampled_point_list(array):
 def get_range(array):
     [x_use, y_use, z_use] = crop_black(array)
 
-    x_range = range(max(FILTER_HALF, x_use[0] - FILTER_HALF), min(LR.shape[0] - FILTER_HALF, x_use[1] + FILTER_HALF))
-    y_range = range(max(FILTER_HALF, y_use[0] - FILTER_HALF), min(LR.shape[1] - FILTER_HALF, y_use[1] + FILTER_HALF))
-    z_range = range(max(FILTER_HALF, z_use[0] - FILTER_HALF), min(LR.shape[2] - FILTER_HALF, z_use[1] + FILTER_HALF))
+    x_range = range(max(FILTER_HALF, x_use[0] - FILTER_HALF), min(array.shape[0] - FILTER_HALF, x_use[1] + FILTER_HALF))
+    y_range = range(max(FILTER_HALF, y_use[0] - FILTER_HALF), min(array.shape[1] - FILTER_HALF, y_use[1] + FILTER_HALF))
+    z_range = range(max(FILTER_HALF, z_use[0] - FILTER_HALF), min(array.shape[2] - FILTER_HALF, z_use[1] + FILTER_HALF))
 
     return x_range, y_range, z_range
 
