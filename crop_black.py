@@ -1,17 +1,26 @@
 import numpy as np
+from numba import jit, prange
 import random
 
 from filter_constant import *
 from util import *
 
+def get_point_list_pixel_type(array):
+    sampled_list = [[] for j in range(PIXEL_TYPE)]
+    for xP, yP, zP in array:
+        t = xP % FACTOR * (FACTOR ** 2) + yP % FACTOR * FACTOR + zP % FACTOR
+        sampled_list[t].append([xP, yP, zP])
+    return sampled_list
+
 def get_sampled_point_list(array):
     [x_range, y_range, z_range] = get_range(array)
 
-    xyz_range = [(x,y,z) for x in x_range for y in y_range for z in z_range]
+    xyz_range = [[x,y,z] for x in x_range for y in y_range for z in z_range]
     sample_range = random.sample(xyz_range, len(xyz_range) // TRAIN_DIV)
-    split_range = list(chunks(sample_range, len(sample_range) // TRAIN_STP - 1))
+    sampled_list = get_point_list_pixel_type(sample_range)
+    #split_range = list(chunks(sample_range, len(sample_range) // TRAIN_STP - 1))
 
-    return split_range
+    return sampled_list
 
 
 def get_range(array):

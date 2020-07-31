@@ -18,8 +18,8 @@ def save_qv(Q, V, finished_files):
         pickle.dump(finished_files, f)
 
 def init_buckets():
-    patchS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
-    xS = [[[] for i in range(PIXEL_TYPE)] for j in range(Q_TOTAL)]
+    patchS = [[] for j in range(Q_TOTAL)]
+    xS = [[] for j in range(Q_TOTAL)]
     return patchS, xS
 
 def load_files():

@@ -9,7 +9,7 @@ from scipy.sparse.linalg import cg
 from filter_constant import *
 
 
-def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
+def dog_sharpener(input, sigma=0.85, alpha=1.414, r=55, ksize=(3,3,3)):
     G1 = gaussian_3d_blur(input, ksize, sigma)
     Ga1 = gaussian_3d_blur(input, ksize, sigma*alpha)
     D1 = add_weight(G1, 1+r, Ga1, -r, 0)

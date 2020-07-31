@@ -34,7 +34,7 @@ for idx, file in enumerate(fileList):
     if fileName in finished_files:
         continue
 
-    print(' ' * 15, '\r[' + str(idx+1), '/', str(len(fileList)) + ']   ', fileName)
+    print('\r[' + str(idx+1), '/', str(len(fileList)) + ']   ', fileName)
 
     HR = nib.load(file).dataobj[:, :-1, :]  # Load NIfTI Image
     HR = normalization_hr(HR)               # Normalized to [0, 1]
@@ -47,11 +47,13 @@ for idx, file in enumerate(fileList):
     print('\rSharpening...', end='', flush=True)
     HR = dog_sharpener(HR)
 
+    print('\rSampling...', end='', flush=True)
     [Lgx, Lgy, Lgz] = np.gradient(LR)
     sampled_list = get_sampled_point_list(HR)
 
-    for split_idx, points in enumerate(sampled_list):
-        print('\r{} / {}'.format(split_idx + 1, TRAIN_STP), end='', flush=True)
+    for t, points in enumerate(sampled_list):
+
+        print('\r{} / {}'.format(t + 1, PIXEL_TYPE), end='', flush=True)
         start = time.time()
         patchS, xS = init_buckets()
 
@@ -76,16 +78,15 @@ for idx, file in enumerate(fileList):
 
             # Compressed vector space
             j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
-            t = xP % FACTOR * (FACTOR ** 2) + yP % FACTOR * FACTOR + zP % FACTOR
             
             pk = patch.reshape(-1)
             x = HR[xP, yP, zP]
 
-            patchS[j][t].append(pk)
-            xS[j][t].append(x)
+            patchS[j].append(pk)
+            xS[j].append(x)
 
             
-        print('\r{} / {}    last {} s '.format(split_idx + 1, TRAIN_STP, '%.3f' % (time.time() - start)), end='', flush=True)
+        print('\r{} / {}    last {} s '.format(t + 1, PIXEL_TYPE, '%.3f' % (time.time() - start)), end='', flush=True)
         start = time.time()
         # check1 = 0
         # check2 = 0
@@ -94,28 +95,27 @@ for idx, file in enumerate(fileList):
         # Compute Q, V
 
         for j in range(Q_TOTAL):
-            for t in range(PIXEL_TYPE):
-                if len(xS[j][t]) != 0:
-                    time11 = time.time()
-                    A = cp.array(patchS[j][t])
-                    b = cp.array(xS[j][t]).reshape(-1, 1)
-                    Qa = cp.array(Q[j, t])
-                    Va = cp.array(V[j, t])
-                    # check1 += time.time() - time11
-                    # time11 = time.time()
+            if len(xS[j]) != 0:
+                # time11 = time.time()
+                A = cp.array(patchS[j])
+                b = cp.array(xS[j]).reshape(-1, 1)
+                Qa = cp.array(Q[j, t])
+                Va = cp.array(V[j, t])
+                # check1 += time.time() - time11
+                # time11 = time.time()
 
-                    Qa += cp.dot(A.T, A)
-                    Va += cp.dot(A.T, b)
+                Qa += cp.dot(A.T, A)
+                Va += cp.dot(A.T, b)
 
-                    # check2 += time.time() - time11
-                    # time11 = time.time()
+                # check2 += time.time() - time11
+                # time11 = time.time()
 
-                    Q[j, t] = Qa.get()
-                    V[j, t] = Va.get()
+                Q[j, t] = Qa.get()
+                V[j, t] = Va.get()
 
-                    # check3 += time.time() - time11
-                    # time11 = time.time()
-                    # check4 += time.time() - time11
+                # check3 += time.time() - time11
+                # time11 = time.time()
+                # check4 += time.time() - time11
 
         # print('\n', check1, check2, check3, check4)
 
