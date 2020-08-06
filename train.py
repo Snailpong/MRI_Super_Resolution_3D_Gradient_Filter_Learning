@@ -1,3 +1,4 @@
+
 import glob
 import time
 import random
@@ -8,22 +9,23 @@ from numba import jit, prange
 
 import nibabel as nib
 
+import filter_constant as C
+
 from crop_black import *
-from filter_constant import *
 from filter_func import *
 from get_lr import *
 from hashtable import *
 from matrix_compute import *
 from util import *
 
+C.argument_parse()
+
 Q, V, finished_files = load_files()
 
-dataDir="./train/*"
-
-fileList = [file for file in glob.glob(dataDir) if file.endswith(".nii.gz")]
+fileList = [file for file in glob.glob(C.TRAIN_GLOB)]
 
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
-weight = get_normalized_gaussian()
+G_WEIGHT = get_normalized_gaussian()
 
 start = time.time()
 
@@ -34,17 +36,15 @@ for idx, file in enumerate(fileList):
     if fileName in finished_files:
         continue
 
-    print('\r[' + str(idx+1), '/', str(len(fileList)) + ']   ', fileName)
+    print('\r[{} / {}]   '.format(idx+1, C.TRAIN_FILE_MAX), fileName)
 
     HR = nib.load(file).dataobj[:, :-1, :]  # Load NIfTI Image
     HR = normalization_hr(HR)               # Normalized to [0, 1]
 
     print('Making LR...', end='', flush=True)
-    #LR = get_lr_kspace(HR)         # Using Frequency domain
-    LR = get_lr_interpolation(HR)   # Using Image domain
+    LR = get_lr(HR)
 
-    # Dog-Sharpening
-    print('\rSharpening...', end='', flush=True)
+    print('\rSharpening...', end='', flush=True)    # Dog-Sharpening
     HR = dog_sharpener(HR)
 
     print('\rSampling...', end='', flush=True)
@@ -53,89 +53,44 @@ for idx, file in enumerate(fileList):
 
     for t, points in enumerate(sampled_list):
 
-        print('\r{} / {}'.format(t + 1, PIXEL_TYPE), end='', flush=True)
+        print('\r{} / {}'.format(t + 1, C.PIXEL_TYPE), end='', flush=True)
         start = time.time()
         patchS, xS = init_buckets()
 
         for point_idx in prange(len(points)):
             xP, yP, zP = points[point_idx]
-            patch = LR[xP - FILTER_HALF: xP + (FILTER_HALF + 1), yP - FILTER_HALF: yP + (FILTER_HALF + 1),
-                    zP - FILTER_HALF: zP + (FILTER_HALF + 1)]
+            patch = get_patch(LR, xP, yP, zP)
 
             if not np.any(patch):
-                    continue
+                continue
 
-            gx = Lgx[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
-                    zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
-            gy = Lgy[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
-                    zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
-            gz = Lgz[xP - GRAD_HALF: xP + (GRAD_HALF + 1), yP - GRAD_HALF: yP + (GRAD_HALF + 1),
-                    zP - GRAD_HALF: zP + (GRAD_HALF + 1)]
+            gx, gy, gz = get_gxyz(Lgx, Lgy, Lgz, xP, yP, zP)
 
             # Computational characteristics
-            angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, weight)
-            # angle_p, angle_t, strength, coherence = get_features(gx, gy, gz, weight)
-
-            # Compressed vector space
-            j = angle_p * Q_ANGLE_T * Q_COHERENCE * Q_STRENGTH + angle_t * Q_COHERENCE * Q_STRENGTH + strength * Q_COHERENCE + coherence
+            angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, G_WEIGHT)
+            # angle_p, angle_t, strength, coherence = get_features2(gx, gy, gz, G_WEIGHT)
+            j = get_bucket(angle_p, angle_t, strength, coherence)
             
-            pk = patch.reshape(-1)
-            x = HR[xP, yP, zP]
+            patchS[j].append(patch.reshape(-1))
+            xS[j].append(HR[xP, yP, zP])
 
-            patchS[j].append(pk)
-            xS[j].append(x)
-
-            
-        print('\r{} / {}    last {} s '.format(t + 1, PIXEL_TYPE, '%.3f' % (time.time() - start)), end='', flush=True)
+        print('\r{} / {}    last {} s '.format(t + 1, C.PIXEL_TYPE, '%.1f' % (time.time() - start)), end='', flush=True)
         start = time.time()
-        # check1 = 0
-        # check2 = 0
-        # check3 = 0
-        # check4 = 0
+
         # Compute Q, V
-
-        for j in range(Q_TOTAL):
+        for j in range(C.Q_TOTAL):
             if len(xS[j]) != 0:
-                # time11 = time.time()
-                A = cp.array(patchS[j])
-                b = cp.array(xS[j]).reshape(-1, 1)
-                Qa = cp.array(Q[j, t])
-                Va = cp.array(V[j, t])
-                # check1 += time.time() - time11
-                # time11 = time.time()
+                Q[j, t], V[j, t] = add_qv_jt(patchS[j], xS[j], Q[j, t], V[j, t], j, t)
 
-                Qa += cp.dot(A.T, A)
-                Va += cp.dot(A.T, b)
+        print('   QV', '%.1f' % (time.time() - start), 's', end='', flush=True)
 
-                # check2 += time.time() - time11
-                # time11 = time.time()
-
-                Q[j, t] = Qa.get()
-                V[j, t] = Va.get()
-
-                # check3 += time.time() - time11
-                # time11 = time.time()
-                # check4 += time.time() - time11
-
-        # print('\n', check1, check2, check3, check4)
-
-        
-        print('   QV', '%.3f' % (time.time() - start), 's', end='', flush=True)
-
-    finished_files.append(fileName)
-    
     print(' ' * 23, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
+    finished_files.append(fileName)
     ask_save_qv(Q, V, finished_files)
 
-    if(idx == 9):
+    if idx != -1 and idx >= C.TRAIN_FILE_MAX - 1:
         break
-    
-
-if str(type(Q)) == '<class \'cupy.core.core.ndarray\'>':
-    Q = Q.get()
-    V = V.get()
 
 save_qv(Q, V, finished_files)
 compute_h(Q, V)
-

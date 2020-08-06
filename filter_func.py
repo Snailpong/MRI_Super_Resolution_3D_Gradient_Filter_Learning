@@ -6,31 +6,34 @@ from scipy.ndimage import zoom
 from numba import jit, njit, cuda, prange, vectorize, float32
 from scipy.sparse.linalg import cg
 
-from filter_constant import *
+import filter_constant as C
 
 
-def dog_sharpener(input, sigma=0.85, alpha=1.414, r=55, ksize=(3,3,3)):
-    G1 = gaussian_3d_blur(input, ksize, sigma)
-    Ga1 = gaussian_3d_blur(input, ksize, sigma*alpha)
-    D1 = add_weight(G1, 1+r, Ga1, -r, 0)
+def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
+    if C.SHARPEN == True:
+        G1 = gaussian_3d_blur(input, ksize, sigma)
+        Ga1 = gaussian_3d_blur(input, ksize, sigma*alpha)
+        D1 = add_weight(G1, 1+r, Ga1, -r, 0)
 
-    G2 = gaussian_3d_blur(Ga1, ksize, sigma)
-    Ga2 = gaussian_3d_blur(Ga1, ksize, sigma*alpha)
-    D2 = add_weight(G2, 1+r, Ga2, -r, 0)
+        G2 = gaussian_3d_blur(Ga1, ksize, sigma)
+        Ga2 = gaussian_3d_blur(Ga1, ksize, sigma*alpha)
+        D2 = add_weight(G2, 1+r, Ga2, -r, 0)
 
-    G3 = gaussian_3d_blur(Ga2, ksize, sigma)
-    Ga3 = gaussian_3d_blur(Ga2, ksize, sigma * alpha)
-    D3 = add_weight(G3, 1+r, Ga3, -r, 0)
+        G3 = gaussian_3d_blur(Ga2, ksize, sigma)
+        Ga3 = gaussian_3d_blur(Ga2, ksize, sigma * alpha)
+        D3 = add_weight(G3, 1+r, Ga3, -r, 0)
 
 
-    B1 = blend_image(input, D3)
-    B1 = blend_image(input, B1)
-    B2 = blend_image(B1, D2)
-    B2 = blend_image(input, B2)
-    B3 = blend_image(B2, D1)
-    B3 = blend_image(input, B3)
+        B1 = blend_image(input, D3)
+        B1 = blend_image(input, B1)
+        B2 = blend_image(B1, D2)
+        B2 = blend_image(input, B2)
+        B3 = blend_image(B2, D1)
+        B3 = blend_image(input, B3)
 
-    output = np.clip(B3, 0, 1)
+        output = np.clip(B3, 0, 1)
+    else:
+        output = input
     return output
 
 @njit(parallel=True)
@@ -113,12 +116,6 @@ def gaussian_3d_blur(input, ksize=(3,3,3), sigma=0.85):
 def add_weight(i1, w1, i2, w2, bias):
     return np.dot(i1, w1) + np.dot(i2, w2) + bias
 
-
-def dog_filter(sigma=0.85, alpha=1.414, rho=15):
-    dog_sigma = np.dot(Gaussian3d(sigma = sigma), (1 + rho))
-    dog_alpha = np.dot(Gaussian3d(sigma = sigma * alpha), rho)
-    return dog_sigma - dog_alpha
-
 def gaussian_3d(shape=(3,3,3), sigma=0.85):
     m,n,o = [(ss-1.)/2. for ss in shape]
     z, y, x = np.ogrid[-m:m+1,-n:n+1, -o:o+1]
@@ -130,7 +127,7 @@ def gaussian_3d(shape=(3,3,3), sigma=0.85):
     return h
 
 def get_normalized_gaussian():
-    weight = gaussian_3d((GRAD_LEN, GRAD_LEN, GRAD_LEN))
+    weight = gaussian_3d((C.GRAD_LEN, C.GRAD_LEN, C.GRAD_LEN))
     weight = np.diag(weight.ravel())
     weight = np.array(weight, dtype=np.float32)
     return weight

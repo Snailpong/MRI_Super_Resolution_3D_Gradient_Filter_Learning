@@ -2,7 +2,7 @@ import numpy as np
 import math
 from numba import jit, njit
 
-from filter_constant import *
+import filter_constant as C
 
 @njit
 def hashtable(gx, gy, gz, weight):
@@ -32,8 +32,8 @@ def hashtable(gx, gy, gz, weight):
     coherence = (lamda1 - lamda2) / (lamda1 + lamda2 + 0.0001)
 
     # Quantization
-    angle_p = int(angle_p / math.pi * Q_ANGLE_P - 0.0001)
-    angle_t = int(angle_t / math.pi * Q_ANGLE_T - 0.0001)
+    angle_p = int(angle_p / math.pi * C.Q_ANGLE_P - 0.0001)
+    angle_t = int(angle_t / math.pi * C.Q_ANGLE_T - 0.0001)
 
     if strength < 0.0001:
         strength = 0
@@ -51,7 +51,7 @@ def hashtable(gx, gy, gz, weight):
     return angle_p, angle_t, int(strength), int(coherence)
 
 
-#@njit
+@njit
 def get_features(gx, gy, gz, weight):
     G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
     x0 = np.dot(G.T, weight)
@@ -70,13 +70,54 @@ def get_features(gx, gy, gz, weight):
         angle_p += math.pi
         angle_t = math.pi - angle_t
 
+    strength = l1
+    fa = math.sqrt(((l1-l2)**2+(l2-l3)**2+(l1-l3)**2) / (max(l1**2+l2**2+l3**2,1e-30)) / 2)
+
+    # Quantization
+    angle_p = int(angle_p / math.pi * C.Q_ANGLE_P - 0.0001)
+    angle_t = int(angle_t / math.pi * C.Q_ANGLE_T - 0.0001)
+
+    if strength < 0.0001:
+        strength = 0
+    elif strength > 0.001:
+        strength = 2
+    else:
+        strength = 1
+
+    if fa < 0.05:
+        fa = 0
+    elif fa > 0.1:
+        fa = 2
+    else:
+        fa = 1
+
+    return angle_p, angle_t, int(strength), int(fa)
+
+@njit
+def get_features2(gx, gy, gz, weight):
+    G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
+    x0 = np.dot(G.T, weight)
+    x = np.dot(x0, G)
+    [eigenvalues, eigenvectors] = np.linalg.eig(x)
+
+    idx = eigenvalues.argsort()[::-1]
+    [l1, l2, l3] = eigenvalues[idx]
+    [vx, vy, vz] = eigenvectors[:, idx[0]]
+
+    # For angle
+    angle_p = math.atan2(vy, vx)
+    angle_t = math.acos(vz / math.sqrt((vx**2+vy**2+vz**2) + 1e-10))
+
+    if angle_p < 0:
+        angle_p += math.pi
+        angle_t = math.pi - angle_t
+
     trace = l1 + l2 + l3
-    #trace = l1
     fa = math.sqrt(((l1-l2)**2+(l2-l3)**2+(l1-l3)**2)/(max(l1**2+l2**2+l3*2,1e-30))/2)
 
     # Quantization
-    angle_p = int(angle_p / math.pi * Q_ANGLE_P - 0.0001)
-    angle_t = int(angle_t / math.pi * Q_ANGLE_T - 0.0001)
+    angle_p = int(angle_p / math.pi * C.Q_ANGLE_P - 0.0001)
+    angle_t = int(angle_t / math.pi * C.Q_ANGLE_T - 0.0001)
 
     if trace < 0.0001:
         trace = 0

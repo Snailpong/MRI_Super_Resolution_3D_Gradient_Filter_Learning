@@ -1,6 +1,15 @@
 import numpy as np
 from scipy.ndimage import zoom
 
+import filter_constant as C
+
+def get_lr(hr):
+    if C.LR_TYPE == 'interpolation':
+        lr = get_lr_interpolation(hr)   # Using Image domain
+    else:
+        lr = get_lr_kspace(hr)          # Using Frequency domain
+    return lr
+    
 
 def get_lr_interpolation(hr):
     downscaled_lr = zoom(hr, 0.5, order=2)

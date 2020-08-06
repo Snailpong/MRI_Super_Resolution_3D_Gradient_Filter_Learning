@@ -2,7 +2,8 @@ import numpy as np
 import os
 import pickle
 
-from filter_constant import *
+import filter_constant as C
+
 
 def ask_save_qv(Q, V, finished_files):
     try:
@@ -12,36 +13,29 @@ def ask_save_qv(Q, V, finished_files):
         pass
 
 def save_qv(Q, V, finished_files):
-    np.save("./arrays/Q", Q)
-    np.save("./arrays/V", V)
-    with open('./arrays/finished_files.pkl', 'wb') as f:
-        pickle.dump(finished_files, f)
+    print('\rSaving QVF...', end='', flush=True)
+    np.savez(C.QVF_FILE, Q=Q, V=V, finished_files=np.array(finished_files))
 
 def init_buckets():
-    patchS = [[] for j in range(Q_TOTAL)]
-    xS = [[] for j in range(Q_TOTAL)]
+    patchS = [[] for j in range(C.Q_TOTAL)]
+    xS = [[] for j in range(C.Q_TOTAL)]
     return patchS, xS
 
 def load_files():
-    # Construct an empty matrix Q, V uses the corresponding LR and HR
-    if os.path.isfile('./arrays/Q.npy') and os.path.isfile('./arrays/V.npy'):
-        print('Importing exist arrays...', end=' ', flush=True)
-        Q = np.load("./arrays/Q.npy")
-        V = np.load("./arrays/V.npy")
-        with open('./arrays/finished_files.pkl', 'rb') as f:
-            finished_files = pickle.load(f)
+    if os.path.isfile('{}.npy'.format(C.QVF_FILE)):
+        print('Loading QVF...', end=' ', flush=True)
+        QVF = np.load('{}.npy'.format(C.QVF_FILE))
+        Q = QVF['Q']
+        V = QVF['V']
+        finished_files = QVF['finished_files'].tolist()
+        QVF.close()
         print('Done', flush=True)
-        
     else:
-        Q = np.zeros((Q_TOTAL, PIXEL_TYPE, FILTER_VOL, FILTER_VOL))
-        V = np.zeros((Q_TOTAL, PIXEL_TYPE, FILTER_VOL, 1))
+        Q = np.zeros((C.Q_TOTAL, C.PIXEL_TYPE, C.FILTER_VOL, C.FILTER_VOL))
+        V = np.zeros((C.Q_TOTAL, C.PIXEL_TYPE, C.FILTER_VOL, 1))
         finished_files = []
 
     return Q, V, finished_files
-
-def chunks(l, n):
-    for i in range(0, len(l), n):
-        yield l[i:i+n]
 
 # Original Code Source : https://greenfishblog.tistory.com/257
 def input_timer(prompt, timeout_sec):
@@ -95,7 +89,7 @@ def input_timer(prompt, timeout_sec):
             # timeout check
             if self._timeout_occured is True:
                 # move the cursor to next line
-                print("")
+                #print("")
                 raise TimeoutError
             return result
 
