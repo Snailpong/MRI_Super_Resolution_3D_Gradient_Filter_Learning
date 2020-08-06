@@ -23,6 +23,7 @@ C.argument_parse()
 Q, V, finished_files = load_files()
 
 fileList = [file for file in glob.glob(C.TRAIN_GLOB)]
+C.TRAIN_FILE_MAX = min(C.TRAIN_FILE_MAX, len(fileList))
 
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
 G_WEIGHT = get_normalized_gaussian()
@@ -52,6 +53,9 @@ for idx, file in enumerate(fileList):
     sampled_list = get_sampled_point_list(HR)
 
     for t, points in enumerate(sampled_list):
+
+        if idx >= C.TRAIN_FILE_MAX:
+            break
 
         print('\r{} / {}'.format(t + 1, C.PIXEL_TYPE), end='', flush=True)
         start = time.time()
@@ -88,9 +92,6 @@ for idx, file in enumerate(fileList):
 
     finished_files.append(fileName)
     ask_save_qv(Q, V, finished_files)
-
-    if idx != -1 and idx >= C.TRAIN_FILE_MAX - 1:
-        break
 
 save_qv(Q, V, finished_files)
 compute_h(Q, V)

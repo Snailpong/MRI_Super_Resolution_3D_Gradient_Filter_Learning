@@ -27,7 +27,7 @@ fileList = [file for file in glob.glob(C.TEST_GLOB)]
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
 G_WEIGHT = get_normalized_gaussian()
 
-h = np.load(C.H_FILE)
+h = np.load('{}.npy'.format(C.H_FILE))
 
 for idx, file in enumerate(fileList):
     filestart = time.time()

@@ -29,7 +29,7 @@ BLEND_THRESHOLD = 10
 
 LR_TYPE = 'interpolation'
 FEATURE_TYPE = 'strength_coherence'
-TRAIN_FILE_MAX = 0
+TRAIN_FILE_MAX = 99999999
 
 
 def argument_parse():
@@ -68,7 +68,7 @@ def argument_parse():
     assert 1 <= int(args.blend_threshold) <= 26
     assert args.lr_type in ['kspace', 'interpolation']
     assert args.feature_type in ['strength_coherence', 'strength_fa', 'trace_coherence', 'trace_fa']
-    assert int(args.train_file_max) >= 0
+    assert int(args.train_file_max) >= 1
 
     QVF_FILE = args.qvf_file
     H_FILE = args.h_file

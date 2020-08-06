@@ -22,9 +22,9 @@ def init_buckets():
     return patchS, xS
 
 def load_files():
-    if os.path.isfile('{}.npy'.format(C.QVF_FILE)):
+    if os.path.isfile('{}.npz'.format(C.QVF_FILE)):
         print('Loading QVF...', end=' ', flush=True)
-        QVF = np.load('{}.npy'.format(C.QVF_FILE))
+        QVF = np.load('{}.npz'.format(C.QVF_FILE))
         Q = QVF['Q']
         V = QVF['V']
         finished_files = QVF['finished_files'].tolist()
