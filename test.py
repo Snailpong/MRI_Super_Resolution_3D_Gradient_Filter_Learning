@@ -18,6 +18,7 @@ from hashtable import *
 from matrix_compute import *
 
 C.argument_parse()
+determine_geometric_func()
 
 current_hour = time.strftime('%m%d%H', time.localtime(time.time()))
 # current_hour = '080413'
@@ -34,7 +35,7 @@ for idx, file in enumerate(fileList):
 
     fileName = file.split('/')[-1].split('\\')[-1]
     fileNumber = fileName.split('_')[-1].split('.')[0]
-    print('\r{} / {}\t{}'.format(idx+1, len(fileList), fileName))
+    print('\r[{} / {}]    {}'.format(idx+1, len(fileList), fileName))
 
     # Load NIfTI Image
     mat_file = nib.load(file)
@@ -68,6 +69,7 @@ for idx, file in enumerate(fileList):
 
                 gx, gy, gz = get_gxyz(Lgx, Lgy, Lgz, xP, yP, zP)
 
+                # angle_p, angle_t, strength, coherence = geometric_quantitization(gx, gy, gz, G_WEIGHT)
                 [angle_p, angle_t, strength, coherence] = hashtable(gx, gy, gz, G_WEIGHT)
                 # [angle_p, angle_t, strength, coherence] = get_features2(gx, gy, gz, G_WEIGHT)
 
@@ -75,16 +77,20 @@ for idx, file in enumerate(fileList):
                 t = xP % FACTOR * (FACTOR ** 2) + yP % FACTOR * FACTOR + zP % FACTOR
 
                 AT = patch.reshape((1, -1))
-                hh = h[j][t].reshape((-1, 1))
+                if C.USE_PIXEL_TYPE:
+                    hh = h[j][t].reshape((-1, 1))
+                else:
+                    hh = h[j][0].reshape((-1, 1))
                 LRDirect[xP][yP][zP] = np.dot(AT, hh)
 
     LRDirect = np.clip(LRDirect, 0, HR_max)
     HR_Blend = blend_image(LR, LRDirect, C.BLEND_THRESHOLD)
-    # ni_img = nib.Nifti1Image(LRDirect, np.eye(4))
-    # nib.save(ni_img, str(idx) + 'outputt2.nii.gz')
-    
+
     ni_img = nib.Nifti1Image(HR_Blend, np.eye(4))
     nib.save(ni_img, '{}{}_{}_outputt.nii.gz'.format(C.RESULT_DIR, current_hour, fileNumber))
+    
+    ni_img = nib.Nifti1Image(LRDirect, np.eye(4))
+    nib.save(ni_img, '{}{}_{}_outputt_nope.nii.gz'.format(C.RESULT_DIR, current_hour, fileNumber))
     print(' ' * 30, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
 print("Test is off")

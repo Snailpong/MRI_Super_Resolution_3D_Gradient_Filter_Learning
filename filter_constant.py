@@ -1,3 +1,5 @@
+import numpy as np
+
 TRAIN_GLOB = './train/*.nii.gz'
 TEST_GLOB = "./test/*.nii.gz"
 RESULT_DIR = "./result/"
@@ -14,9 +16,15 @@ FILTER_HALF = FILTER_LEN // 2
 GRAD_LEN = 9
 GRAD_HALF = GRAD_LEN // 2
 
+Q_LAMBDA1_SPLIT = np.array([0.0001, 0.001])
+Q_TRACE_SPLIT = np.array([0.0001, 0.001])
+Q_COH2_SPLIT = np.array([0.25, 0.5])
+Q_FA_SPLIT = np.array([0.05, 0.1])
+
 Q_STRENGTH = 3      # Do not edit!
 Q_COHERENCE = 3     # Do not edit!
 
+USE_PIXEL_TYPE = "True"
 FACTOR = 2
 PIXEL_TYPE = FACTOR ** 3
 
@@ -28,7 +36,7 @@ SHARPEN = 'False'
 BLEND_THRESHOLD = 10
 
 LR_TYPE = 'interpolation'
-FEATURE_TYPE = 'strength_coherence'
+FEATURE_TYPE = 'lambda1_coh2'
 TRAIN_FILE_MAX = 99999999
 
 
@@ -38,7 +46,7 @@ def argument_parse():
 
     global QVF_FILE, H_FILE, Q_ANGLE_T, Q_ANGLE_P, GRAD_LEN, FILTER_LEN, FILTER_HALF
     global Q_STRENGTH, Q_COHERENCE, FACTOR, PIXEL_TYPE, Q_TOTAL, FILTER_VOL, TRAIN_DIV
-    global SHARPEN, BLEND_THRESHOLD, LR_TYPE, FEATURE_TYPE, TRAIN_FILE_MAX
+    global USE_PIXEL_TYPE, SHARPEN, BLEND_THRESHOLD, LR_TYPE, FEATURE_TYPE, TRAIN_FILE_MAX
 
     parser = argparse.ArgumentParser()
 
@@ -51,6 +59,7 @@ def argument_parse():
     parser.add_argument('--factor', required=False, default=FACTOR)
     parser.add_argument('--train_div', required=False, default=TRAIN_DIV)
     parser.add_argument('--sharpen', required=False, default=SHARPEN)
+    parser.add_argument('--use_pixel_type', required=False, default=USE_PIXEL_TYPE)
     parser.add_argument('--blend_threshold', required=False, default=BLEND_THRESHOLD)
     parser.add_argument('--lr_type', required=False, default=LR_TYPE)
     parser.add_argument('--feature_type', required=False, default=FEATURE_TYPE)
@@ -65,9 +74,10 @@ def argument_parse():
     assert int(args.factor) >= 2
     assert int(args.train_div) >= 1
     assert args.sharpen in ['True', 'False']
+    assert args.use_pixel_type in ['True', 'False']
     assert 1 <= int(args.blend_threshold) <= 26
     assert args.lr_type in ['kspace', 'interpolation']
-    assert args.feature_type in ['strength_coherence', 'strength_fa', 'trace_coherence', 'trace_fa']
+    assert args.feature_type in ['lambda1_coh2', 'lambda1_fa', 'trace_coh2', 'trace_fa']
     assert int(args.train_file_max) >= 1
 
     QVF_FILE = args.qvf_file
@@ -79,6 +89,7 @@ def argument_parse():
     GRAD_LEN = int(args.grad_len)
     GRAD_HALF = GRAD_LEN // 2
     FACTOR = int(args.factor)
+    USE_PIXEL_TYPE = (args.use_pixel_type == 'True')
     PIXEL_TYPE = FACTOR ** 3
     Q_TOTAL = Q_ANGLE_P * Q_ANGLE_T * Q_STRENGTH * Q_COHERENCE
     FILTER_VOL = FILTER_LEN ** 3

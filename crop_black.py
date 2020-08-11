@@ -6,10 +6,16 @@ import filter_constant as C
 from util import *
 
 def get_point_list_pixel_type(array):
-    sampled_list = [[] for j in range(C.PIXEL_TYPE)]
-    for xP, yP, zP in array:
-        t = xP % C.FACTOR * (C.FACTOR ** 2) + yP % C.FACTOR * C.FACTOR + zP % C.FACTOR
-        sampled_list[t].append([xP, yP, zP])
+    if C.USE_PIXEL_TYPE:
+        sampled_list = [[] for j in range(C.PIXEL_TYPE)]
+        for xP, yP, zP in array:
+            t = xP % C.FACTOR * (C.FACTOR ** 2) + yP % C.FACTOR * C.FACTOR + zP % C.FACTOR
+            sampled_list[t].append([xP, yP, zP])
+    else:
+        sampled_list = [[] for j in range(C.PIXEL_TYPE)]
+        for xP, yP, zP in array:
+            t = np.random.randint(C.PIXEL_TYPE)
+            sampled_list[t].append([xP, yP, zP])
     return sampled_list
 
 def get_sampled_point_list(array):

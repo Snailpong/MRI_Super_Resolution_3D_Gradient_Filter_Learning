@@ -19,6 +19,7 @@ from matrix_compute import *
 from util import *
 
 C.argument_parse()
+determine_geometric_func()
 
 Q, V, finished_files = load_files()
 
@@ -37,7 +38,7 @@ for idx, file in enumerate(fileList):
     if fileName in finished_files:
         continue
 
-    print('\r[{} / {}]   '.format(idx+1, C.TRAIN_FILE_MAX), fileName)
+    print('\r[{} / {}]    {}'.format(idx+1, C.TRAIN_FILE_MAX, fileName))
 
     HR = nib.load(file).dataobj[:, :-1, :]  # Load NIfTI Image
     HR = normalization_hr(HR)               # Normalized to [0, 1]
@@ -71,6 +72,7 @@ for idx, file in enumerate(fileList):
             gx, gy, gz = get_gxyz(Lgx, Lgy, Lgz, xP, yP, zP)
 
             # Computational characteristics
+            # angle_p, angle_t, strength, coherence = geometric_quantitization(gx, gy, gz, G_WEIGHT)
             angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, G_WEIGHT)
             # angle_p, angle_t, strength, coherence = get_features2(gx, gy, gz, G_WEIGHT)
             j = get_bucket(angle_p, angle_t, strength, coherence)
@@ -84,7 +86,10 @@ for idx, file in enumerate(fileList):
         # Compute Q, V
         for j in range(C.Q_TOTAL):
             if len(xS[j]) != 0:
-                Q[j, t], V[j, t] = add_qv_jt(patchS[j], xS[j], Q[j, t], V[j, t], j, t)
+                if C.USE_PIXEL_TYPE:
+                    Q[j, t], V[j, t] = add_qv_jt(patchS[j], xS[j], Q[j, t], V[j, t], j, t)
+                else:
+                    Q[j, 0], V[j, 0] = add_qv_jt(patchS[j], xS[j], Q[j, 0], V[j, 0], j, 0)
 
         print('   QV', '%.1f' % (time.time() - start), 's', end='', flush=True)
 

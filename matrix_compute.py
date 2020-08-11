@@ -52,8 +52,8 @@ def compute_h(Q, V):
 
     print("\rComputing H...   ")
     start = time.time()
-    for j in range(Q_TOTAL):
-        for t in range(PIXEL_TYPE):
+    for j in range(C.Q_TOTAL):
+        for t in range(C.PIXEL_TYPE):
             print(j * C.PIXEL_TYPE + t, "/", C.Q_TOTAL * C.PIXEL_TYPE, end='\r', flush=True)
             h[j, t] = cg(Q[j, t], V[j, t])[0]
 
