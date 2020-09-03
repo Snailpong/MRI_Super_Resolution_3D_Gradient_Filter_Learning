@@ -10,30 +10,28 @@ import filter_constant as C
 
 
 def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
-    if C.SHARPEN == True:
-        G1 = gaussian_3d_blur(input, ksize, sigma)
-        Ga1 = gaussian_3d_blur(input, ksize, sigma*alpha)
-        D1 = add_weight(G1, 1+r, Ga1, -r, 0)
+    G1 = gaussian_3d_blur(input, ksize, sigma)
+    Ga1 = gaussian_3d_blur(input, ksize, sigma*alpha)
+    D1 = add_weight(G1, 1+r, Ga1, -r, 0)
 
-        G2 = gaussian_3d_blur(Ga1, ksize, sigma)
-        Ga2 = gaussian_3d_blur(Ga1, ksize, sigma*alpha)
-        D2 = add_weight(G2, 1+r, Ga2, -r, 0)
+    G2 = gaussian_3d_blur(Ga1, ksize, sigma)
+    Ga2 = gaussian_3d_blur(Ga1, ksize, sigma*alpha)
+    D2 = add_weight(G2, 1+r, Ga2, -r, 0)
 
-        G3 = gaussian_3d_blur(Ga2, ksize, sigma)
-        Ga3 = gaussian_3d_blur(Ga2, ksize, sigma * alpha)
-        D3 = add_weight(G3, 1+r, Ga3, -r, 0)
+    G3 = gaussian_3d_blur(Ga2, ksize, sigma)
+    Ga3 = gaussian_3d_blur(Ga2, ksize, sigma * alpha)
+    D3 = add_weight(G3, 1+r, Ga3, -r, 0)
 
 
-        B1 = blend_image(input, D3)
-        B1 = blend_image(input, B1)
-        B2 = blend_image(B1, D2)
-        B2 = blend_image(input, B2)
-        B3 = blend_image(B2, D1)
-        B3 = blend_image(input, B3)
+    B1 = blend_image(input, D3)
+    B1 = blend_image(input, B1)
+    B2 = blend_image(B1, D2)
+    B2 = blend_image(input, B2)
+    B3 = blend_image(B2, D1)
+    B3 = blend_image(input, B3)
 
-        output = np.clip(B3, 0, 1)
-    else:
-        output = input
+    output = np.clip(B3, 0, 1)
+
     return output
 
 @njit(parallel=True)

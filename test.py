@@ -89,8 +89,8 @@ for idx, file in enumerate(fileList):
     ni_img = nib.Nifti1Image(HR_Blend, np.eye(4))
     nib.save(ni_img, '{}{}_{}_outputt.nii.gz'.format(C.RESULT_DIR, current_hour, fileNumber))
     
-    ni_img = nib.Nifti1Image(LRDirect, np.eye(4))
-    nib.save(ni_img, '{}{}_{}_outputt_nope.nii.gz'.format(C.RESULT_DIR, current_hour, fileNumber))
-    print(' ' * 30, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
+    ni_img2 = nib.Nifti1Image(LRDirect, np.eye(4))
+    nib.save(ni_img2, '{}{}_{}_nope_outputt.nii.gz'.format(C.RESULT_DIR, current_hour, fileNumber))
+    print(' ' * 35, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
 print("Test is off")

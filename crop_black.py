@@ -1,27 +1,20 @@
 import numpy as np
-from numba import jit, prange
 import random
 
 import filter_constant as C
 from util import *
 
 def get_point_list_pixel_type(array):
-    if C.USE_PIXEL_TYPE:
-        sampled_list = [[] for j in range(C.PIXEL_TYPE)]
-        for xP, yP, zP in array:
-            t = xP % C.FACTOR * (C.FACTOR ** 2) + yP % C.FACTOR * C.FACTOR + zP % C.FACTOR
-            sampled_list[t].append([xP, yP, zP])
-    else:
-        sampled_list = [[] for j in range(C.PIXEL_TYPE)]
-        for xP, yP, zP in array:
-            t = np.random.randint(C.PIXEL_TYPE)
-            sampled_list[t].append([xP, yP, zP])
+    sampled_list = [[] for j in range(C.PIXEL_TYPE)]
+    for xP, yP, zP in array:
+        t = xP % C.FACTOR * (C.FACTOR ** 2) + yP % C.FACTOR * C.FACTOR + zP % C.FACTOR
+        sampled_list[t].append([xP, yP, zP])
     return sampled_list
 
 def get_sampled_point_list(array):
     [x_range, y_range, z_range] = get_range(array)
 
-    xyz_range = [[x,y,z] for x in x_range for y in y_range for z in z_range]
+    xyz_range = [[x, y, z] for x in x_range for y in y_range for z in z_range]
     sample_range = random.sample(xyz_range, len(xyz_range) // C.TRAIN_DIV)
     sampled_list = get_point_list_pixel_type(sample_range)
     #split_range = list(chunks(sample_range, len(sample_range) // TRAIN_STP - 1))

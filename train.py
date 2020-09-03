@@ -47,20 +47,20 @@ for idx, file in enumerate(fileList):
     LR = get_lr(HR)
 
     print('\rSharpening...', end='', flush=True)    # Dog-Sharpening
-    HR = dog_sharpener(HR)
+    # HR = dog_sharpener(HR)
 
-    print('\rSampling...', end='', flush=True)
     [Lgx, Lgy, Lgz] = np.gradient(LR)
     sampled_list = get_sampled_point_list(HR)
 
-    for t, points in enumerate(sampled_list):
-
-        if idx >= C.TRAIN_FILE_MAX:
-            break
-
-        print('\r{} / {}'.format(t + 1, C.PIXEL_TYPE), end='', flush=True)
+    for split_idx, points in enumerate(sampled_list):
+        print('\r{} / {}'.format(split_idx + 1, C.PIXEL_TYPE), end='', flush=True)
         start = time.time()
         patchS, xS = init_buckets()
+
+        if C.USE_PIXEL_TYPE:
+            t = split_idx
+        else:
+            t = 0
 
         for point_idx in prange(len(points)):
             xP, yP, zP = points[point_idx]
@@ -72,27 +72,41 @@ for idx, file in enumerate(fileList):
             gx, gy, gz = get_gxyz(Lgx, Lgy, Lgz, xP, yP, zP)
 
             # Computational characteristics
-            # angle_p, angle_t, strength, coherence = geometric_quantitization(gx, gy, gz, G_WEIGHT)
             angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, G_WEIGHT)
-            # angle_p, angle_t, strength, coherence = get_features2(gx, gy, gz, G_WEIGHT)
-            j = get_bucket(angle_p, angle_t, strength, coherence)
-            
-            patchS[j].append(patch.reshape(-1))
-            xS[j].append(HR[xP, yP, zP])
+            # angle_p, angle_t, strength, coherence = get_features(gx, gy, gz, weight)
 
-        print('\r{} / {}    last {} s '.format(t + 1, C.PIXEL_TYPE, '%.1f' % (time.time() - start)), end='', flush=True)
+            # Compressed vector space
+            j = angle_p * C.Q_ANGLE_T * C.Q_COHERENCE * C.Q_STRENGTH + angle_t * C.Q_COHERENCE * C.Q_STRENGTH + strength * C.Q_COHERENCE + coherence
+            
+            pk = patch.reshape(-1)
+            x = HR[xP, yP, zP]
+
+            patchS[j].append(pk)
+            xS[j].append(x)
+
+            
+        print('\r{} / {}    last {} s '.format(split_idx + 1, C.PIXEL_TYPE, '%.3f' % (time.time() - start)), end='', flush=True)
         start = time.time()
 
-        # Compute Q, V
         for j in range(C.Q_TOTAL):
-            if len(xS[j]) != 0:
-                if C.USE_PIXEL_TYPE:
-                    Q[j, t], V[j, t] = add_qv_jt(patchS[j], xS[j], Q[j, t], V[j, t], j, t)
-                else:
-                    Q[j, 0], V[j, 0] = add_qv_jt(patchS[j], xS[j], Q[j, 0], V[j, 0], j, 0)
+                if len(xS[j]) != 0:
+                    time11 = time.time()
+                    A = cp.array(patchS[j])
+                    b = cp.array(xS[j]).reshape(-1, 1)
+                    Qa = cp.array(Q[j, t])
+                    Va = cp.array(V[j, t])
 
-        print('   QV', '%.1f' % (time.time() - start), 's', end='', flush=True)
+                    Qa += cp.dot(A.T, A)
+                    Va += cp.dot(A.T, b)
 
+                    Q[j, t] = Qa.get()
+                    V[j, t] = Va.get()
+
+        
+        print('   QV', '%.3f' % (time.time() - start), 's', end='', flush=True)
+
+    finished_files.append(fileName)
+    
     print(' ' * 23, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
     finished_files.append(fileName)

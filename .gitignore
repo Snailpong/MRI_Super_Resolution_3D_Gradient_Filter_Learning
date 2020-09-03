@@ -1,6 +1,7 @@
 __pycache__/
 py_nope/
 result_temp/
+test_lr/
 *.npy
 *.nii
 *.gz

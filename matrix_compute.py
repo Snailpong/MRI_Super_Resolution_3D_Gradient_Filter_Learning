@@ -48,13 +48,13 @@ def add_qv_jt(patchSa, xSa, Qa, Va, j, t):
     return Qa.get(), Va.get()
 
 def compute_h(Q, V):
-    h = np.zeros((C.Q_TOTAL, C.PIXEL_TYPE, C.FILTER_VOL))
+    h = np.zeros((Q.shape[0], Q.shape[1], Q.shape[2]))
 
     print("\rComputing H...   ")
     start = time.time()
-    for j in range(C.Q_TOTAL):
-        for t in range(C.PIXEL_TYPE):
-            print(j * C.PIXEL_TYPE + t, "/", C.Q_TOTAL * C.PIXEL_TYPE, end='\r', flush=True)
+    for j in range(Q.shape[0]):
+        for t in range(Q.shape[1]):
+            print(j * Q.shape[1] + t, "/", Q.shape[0] * Q.shape[1], end='\r', flush=True)
             h[j, t] = cg(Q[j, t], V[j, t])[0]
 
     np.save(C.H_FILE, h)

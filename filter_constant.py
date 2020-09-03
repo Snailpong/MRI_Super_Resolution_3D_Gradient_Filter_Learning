@@ -24,7 +24,7 @@ Q_FA_SPLIT = np.array([0.05, 0.1])
 Q_STRENGTH = 3      # Do not edit!
 Q_COHERENCE = 3     # Do not edit!
 
-USE_PIXEL_TYPE = "True"
+USE_PIXEL_TYPE = 'True'
 FACTOR = 2
 PIXEL_TYPE = FACTOR ** 3
 
