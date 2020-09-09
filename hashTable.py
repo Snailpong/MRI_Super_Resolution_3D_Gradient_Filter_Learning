@@ -62,11 +62,11 @@ def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, i
         for j1 in range(W - 2 * C.PATCH_HALF):
             for k1 in range(D - 2 * C.PATCH_HALF):
 
-                if random.random() > 0.33 or im[i1 + C.GRADIENT_HALF, j1 + C.GRADIENT_HALF, k1 + C.GRADIENT_HALF] == 0:
+                if random.random() > 0.33 or im[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
                     continue
 
-                idx1 = (slice(i1, (i1 + 2 * C.GRADIENT_HALF + 1)), slice(j1, (j1 + 2 * C.GRADIENT_HALF + 1)),
-                        slice(k1, (k1 + 2 * C.GRADIENT_HALF + 1)))
+                idx1 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
+                        slice(k1+1, (k1 + 2 * C.GRADIENT_HALF + 2)))
                 patch = im[idx1]
 
                 patchX = im_GX[idx1]
@@ -163,8 +163,8 @@ def train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V, mar
 
                 patch = im_LR[idx1]
 
-                idx2 = (slice(i1, (i1 + 2 * C.GRADIENT_HALF + 1)), slice(j1, (j1 + 2 * C.GRADIENT_HALF + 1)),
-                        slice(k1, (k1 + 2 * C.GRADIENT_HALF + 1)))
+                idx2 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
+                        slice(k1+1, (k1 + 2 * C.GRADIENT_HALF + 2)))
 
                 patchX = im_GX[idx2]
                 patchY = im_GY[idx2]

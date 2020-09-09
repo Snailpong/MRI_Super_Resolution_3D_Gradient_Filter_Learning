@@ -4,7 +4,6 @@ import random
 
 import cupy as cp
 import numpy as np
-from numba import jit, prange
 
 import nibabel as nib
 
@@ -81,8 +80,10 @@ start = time.time()
 for file_idx, file in enumerate(file_list):
     file_name = file.split('\\')[-1].split('.')[0]
     filestart = time.time()
-    print('\r', end='')
-    print('' * 60, end='')
+
+    if file in finished_files:
+        continue
+
     print('\rProcessing ' + str(file_idx + 1) + '/' + str(len(file_list)) + ' image (' + file_name + ')')
 
     raw_image = nib.load(file).dataobj
@@ -107,7 +108,7 @@ for file_idx, file in enumerate(file_list):
     finished_files.append(file)
     ask_save_qv(Q, V, finished_files)
 
-# save_qv(Q, V, finished_files)
+save_qv(Q, V, finished_files)
 compute_h(Q, V)
 
 with open("./arrays/Qfactor_str" + str(C.R), "wb") as sp:

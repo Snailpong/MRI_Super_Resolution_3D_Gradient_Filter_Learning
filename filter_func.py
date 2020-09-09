@@ -91,10 +91,10 @@ def blend_image(LR, HR, threshold = 10):
     blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended
 
-# @njit
-def blend_image2(LR, HR, threshold = 10):
+@njit
+def blend_image2(LR, SR, threshold = 10):
     H, W, D = LR.shape
-    blended = HR.copy()
+    blended = SR.copy()
     print(blended.shape)
     windowSize = 3
     C = np.int((windowSize - 1) / 2)
@@ -102,10 +102,28 @@ def blend_image2(LR, HR, threshold = 10):
     for i in range(C, H - C):
         for j in range(C, W - C):
             for k in range(C, D - C):
-                cur = np.sort(HR[i-C: i+C+1, j-C: j+C+1, k-C: k+C+1].ravel())
-                cur = cur[2:27-2]
+                cur = np.sort(SR[i-C: i+C+1, j-C: j+C+1, k-C: k+C+1].ravel())
+                # cur = cur[2:27-2]
 
-                if cur[0] > HR[i, j, k] or cur[-1] < HR[i, j, k]:
+                if cur[0] > SR[i, j, k] or cur[-1] < SR[i, j, k]:
+                    blended[i, j, k] = LR[i, j, k]
+    # blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
+    return blended
+
+@njit
+def blend_image3(LR, SR, threshold = 10):
+    H, W, D = LR.shape
+    blended = SR.copy()
+    print(blended.shape)
+    windowSize = 3
+    C = np.int((windowSize - 1) / 2)
+
+    for i in range(C, H - C):
+        for j in range(C, W - C):
+            for k in range(C, D - C):
+                std_sr = np.std(LR[i-C: i+C+1, j-C: j+C+1, k-C: k+C+1].ravel())
+
+                if abs(LR[i, j, k] - SR[i, j, k]) > std_sr * 3:
                     blended[i, j, k] = LR[i, j, k]
     # blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended

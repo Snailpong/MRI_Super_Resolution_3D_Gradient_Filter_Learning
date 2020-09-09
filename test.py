@@ -50,8 +50,8 @@ def make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h
             if im_LR[i1 + C.GRADIENT_HALF, j1 + C.GRADIENT_HALF, k1 + C.GRADIENT_HALF] == 0:
                     continue
 
-            idx2 = (slice(i1, (i1 + 2 * GRADIENT_HALF + 1)), slice(j1, (j1 + 2 * GRADIENT_HALF + 1)),
-                    slice(k1, (k1 + 2 * GRADIENT_HALF + 1)))
+            idx2 = (slice(i1+1, (i1 + 2 * GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * GRADIENT_HALF + 2)),
+                    slice(k1+1, (k1 + 2 * GRADIENT_HALF + 2)))
 
             patchX = im_GX[idx2]
             patchY = im_GY[idx2]
@@ -104,7 +104,7 @@ for file_idx, file in enumerate(file_list):
 
     im_result = make_image(im_LR, im_GX, im_GY, im_GZ, G_WEIGHT, stre, cohe, h)
     # im_blending = Blending2(im_LR, im_result)
-    im_blending = blend_image2(im_LR, im_result, 5)
+    im_blending = blend_image3(im_LR, im_result, 5)
     # im_blending = Backprojection(imL, im_blending, 50) #Optional: Backprojection, which can slightly improve PSNR, especilly for large upscaling factor.
     im_blending = np.clip(im_blending, 0, 1)
 
