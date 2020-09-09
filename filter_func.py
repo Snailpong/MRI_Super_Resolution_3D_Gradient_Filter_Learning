@@ -34,25 +34,10 @@ def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
 
     return output
 
-@njit(parallel=True)
-def clip(im, low, high):
-    H, W, D = im.shape
-    for i in prange(H):
-        for j in prange(W):
-            for k in prange(D):
-                if im[i, j, k] < low:
-                    im[i, j, k] = low
-                elif im[i, j, k] > high:
-                    im[i, j, k] = high
-
-@njit(parallel=True)
-def clip_zero(im):
-    H, W, D = im.shape
-    for i in prange(H):
-        for j in prange(W):
-            for k in prange(D):
-                if im[i, j, k] < 0:
-                    im[i, j, k] = 0
+def clip_image(im):
+    clip_value = np.sort(im.ravel())[int(np.prod(im.shape) * 0.999)]
+    im = np.clip(im, 0, clip_value)
+    return im
 
 @njit(parallel=True)
 def ct_descriptor(im):
@@ -106,6 +91,25 @@ def blend_image(LR, HR, threshold = 10):
     blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended
 
+# @njit
+def blend_image2(LR, HR, threshold = 10):
+    H, W, D = LR.shape
+    blended = HR.copy()
+    print(blended.shape)
+    windowSize = 3
+    C = np.int((windowSize - 1) / 2)
+
+    for i in range(C, H - C):
+        for j in range(C, W - C):
+            for k in range(C, D - C):
+                cur = np.sort(HR[i-C: i+C+1, j-C: j+C+1, k-C: k+C+1].ravel())
+                cur = cur[2:27-2]
+
+                if cur[0] > HR[i, j, k] or cur[-1] < HR[i, j, k]:
+                    blended[i, j, k] = LR[i, j, k]
+    # blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
+    return blended
+
 def gaussian_3d_blur(input, ksize=(3,3,3), sigma=0.85):
     filter = gaussian_3d(ksize, sigma)
     output = convolve(input, filter)
@@ -125,7 +129,7 @@ def gaussian_3d(shape=(3,3,3), sigma=0.85):
     return h
 
 def get_normalized_gaussian():
-    weight = gaussian_3d((C.GRAD_LEN, C.GRAD_LEN, C.GRAD_LEN))
+    weight = gaussian_3d((C.GRADIENT_SIZE, C.GRADIENT_SIZE, C.GRADIENT_SIZE))
     weight = np.diag(weight.ravel())
     weight = np.array(weight, dtype=np.float32)
     return weight

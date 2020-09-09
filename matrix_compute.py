@@ -11,21 +11,21 @@ import filter_constant as C
 
 @njit
 def get_patch(LR, xP, yP, zP):
-    return LR[xP - C.FILTER_HALF: xP + (C.FILTER_HALF + 1),
-              yP - C.FILTER_HALF: yP + (C.FILTER_HALF + 1),
-              zP - C.FILTER_HALF: zP + (C.FILTER_HALF + 1)]
+    return LR[xP - C.PATCH_HALF: xP + (C.PATCH_HALF + 1),
+              yP - C.PATCH_HALF: yP + (C.PATCH_HALF + 1),
+              zP - C.PATCH_HALF: zP + (C.PATCH_HALF + 1)]
 
 @njit
 def get_gxyz(Lgx, Lgy, Lgz, xP, yP, zP):
-    gx = Lgx[xP - C.GRAD_HALF: xP + (C.GRAD_HALF + 1),
-             yP - C.GRAD_HALF: yP + (C.GRAD_HALF + 1),
-             zP - C.GRAD_HALF: zP + (C.GRAD_HALF + 1)]
-    gy = Lgy[xP - C.GRAD_HALF: xP + (C.GRAD_HALF + 1),
-             yP - C.GRAD_HALF: yP + (C.GRAD_HALF + 1),
-             zP - C.GRAD_HALF: zP + (C.GRAD_HALF + 1)]
-    gz = Lgz[xP - C.GRAD_HALF: xP + (C.GRAD_HALF + 1),
-             yP - C.GRAD_HALF: yP + (C.GRAD_HALF + 1),
-             zP - C.GRAD_HALF: zP + (C.GRAD_HALF + 1)]
+    gx = Lgx[xP - C.GRADIENT_HALF: xP + (C.GRADIENT_HALF + 1),
+             yP - C.GRADIENT_HALF: yP + (C.GRADIENT_HALF + 1),
+             zP - C.GRADIENT_HALF: zP + (C.GRADIENT_HALF + 1)]
+    gy = Lgy[xP - C.GRADIENT_HALF: xP + (C.GRADIENT_HALF + 1),
+             yP - C.GRADIENT_HALF: yP + (C.GRADIENT_HALF + 1),
+             zP - C.GRADIENT_HALF: zP + (C.GRADIENT_HALF + 1)]
+    gz = Lgz[xP - C.GRADIENT_HALF: xP + (C.GRADIENT_HALF + 1),
+             yP - C.GRADIENT_HALF: yP + (C.GRADIENT_HALF + 1),
+             zP - C.GRADIENT_HALF: zP + (C.GRADIENT_HALF + 1)]
     return gx, gy, gz
 
 @njit
@@ -48,14 +48,20 @@ def add_qv_jt(patchSa, xSa, Qa, Va, j, t):
     return Qa.get(), Va.get()
 
 def compute_h(Q, V):
-    h = np.zeros((Q.shape[0], Q.shape[1], Q.shape[2]))
+    h = np.zeros((Q.shape[0], Q.shape[1]))
 
     print("\rComputing H...   ")
     start = time.time()
-    for j in range(Q.shape[0]):
-        for t in range(Q.shape[1]):
-            print(j * Q.shape[1] + t, "/", Q.shape[0] * Q.shape[1], end='\r', flush=True)
-            h[j, t] = cg(Q[j, t], V[j, t])[0]
+    for j in range(C.Q_TOTAL):
+        print('\r{} / {}'.format(j + 1, C.Q_TOTAL), end='')
+        while True:
+            if Q[j].sum() < 100:
+                break
+            if np.linalg.det(Q[j]) < 1:
+                Q[j] = Q[j] + np.eye(C.PATCH_SIZE ** 3) * Q[j].sum() * 0.000000005
+            else:
+                h[j] = np.linalg.inv(Q[j]).dot(V[j])  # Eq.2
+                break
 
     np.save(C.H_FILE, h)
     print('Computing H is off in {} minutes'.format((time.time() - start) // 60))

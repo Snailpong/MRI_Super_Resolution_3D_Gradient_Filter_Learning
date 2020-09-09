@@ -1,4 +1,3 @@
-
 import glob
 import time
 import random
@@ -21,96 +20,98 @@ from util import *
 C.argument_parse()
 determine_geometric_func()
 
-Q, V, finished_files = load_files()
+C.USE_PIXEL_TYPE = False
 
-fileList = [file for file in glob.glob(C.TRAIN_GLOB)]
-C.TRAIN_FILE_MAX = min(C.TRAIN_FILE_MAX, len(fileList))
+Q, V, finished_files = load_files()
+mark = np.zeros((C.R ** 3, C.Q_TOTAL))
+
+stre = np.zeros((C.Q_STRENGTH - 1))  # Strength boundary
+cohe = np.zeros((C.Q_COHERENCE - 1)) # Coherence boundary
+
+trainPath = './train'
+
+file_list = make_dataset(trainPath)
+C.TRAIN_FILE_MAX = min(C.TRAIN_FILE_MAX, len(file_list))
 
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
 G_WEIGHT = get_normalized_gaussian()
 
+# instance = 4000000                          # use 20000000 patches to get the Strength and coherence boundary
+# patchNumber = 0                              # patch number has been used
+# quantization = np.zeros((instance, 2))        # quantization boundary
+# for file_idx, image in enumerate(file_list):
+#     print('\r', end='')
+#     print('' * 60, end='')
+#     print('\r Quantization: Processing '+ image.split('\\')[-1] + str(instance) + ' patches (' + str(100*patchNumber/instance) + '%)')
+#
+#     raw_image = nib.load(image).dataobj
+#     crop_image = mod_crop(raw_image, C.R)
+#     clipped_image = clip_image(crop_image)
+#     slice_area = crop_slice(clipped_image, C.PATCH_SIZE // 2, C.R)
+#
+#     im_LR = get_lr(clipped_image)         # Prepare the cheap-upscaling images (optional: JPEG compression)
+#
+#     im_blank_LR = get_lr(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
+#     im_LR = im_blank_LR[slice_area]
+#     im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
+#
+#     quantization, patchNumber = quantization_border(im_LR, im_GX, im_GY, im_GZ, patchNumber, G_WEIGHT, quantization, instance)  # get the strength and coherence of each patch
+#     if patchNumber > instance / 2:
+#         break
+#
+# # uniform quantization of patches, get the optimized strength and coherence boundaries
+# quantization = quantization[0:patchNumber, :]
+# quantization = np.sort(quantization, axis=0)
+# for i in range(C.Q_STRENGTH - 1):
+#     stre[i] = quantization[floor((i+1) * patchNumber / C.Q_STRENGTH), 0]
+# for i in range(C.Q_COHERENCE - 1):
+#     cohe[i] = quantization[floor((i+1) * patchNumber / C.Q_COHERENCE), 1]
+
+stre[0] = 0.00075061
+stre[1] = 0.00297238
+cohe[0] = 0.42785409
+cohe[1] = 0.61220482
+
+print(stre, cohe)
+
+
+
 start = time.time()
 
-for idx, file in enumerate(fileList):
+for file_idx, file in enumerate(file_list):
+    file_name = file.split('\\')[-1].split('.')[0]
     filestart = time.time()
+    print('\r', end='')
+    print('' * 60, end='')
+    print('\rProcessing ' + str(file_idx + 1) + '/' + str(len(file_list)) + ' image (' + file_name + ')')
 
-    fileName = file.split('/')[-1].split('\\')[-1]
-    if fileName in finished_files:
-        continue
+    raw_image = nib.load(file).dataobj
+    crop_image = mod_crop(raw_image, C.R)
+    clipped_image = clip_image(crop_image)
+    slice_area = crop_slice(clipped_image, C.PATCH_HALF, C.R)
 
-    print('\r[{} / {}]    {}'.format(idx+1, C.TRAIN_FILE_MAX, fileName))
+    im_blank_LR = get_lr(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
+    im_LR = im_blank_LR[slice_area]
+    im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
+    im_HR = clipped_image[slice_area] / clipped_image.max()
 
-    HR = nib.load(file).dataobj[:, :-1, :]  # Load NIfTI Image
-    HR = normalization_hr(HR)               # Normalized to [0, 1]
+    Q, V, mark = train_qv(im_LR, im_HR, im_GX, im_GY, im_GZ, G_WEIGHT, stre, cohe, Q, V, mark)  # get Q, V of each patch
 
-    print('Making LR...', end='', flush=True)
-    LR = get_lr(HR)
+    if file_idx + 1 == 10:
+        break
 
-    print('\rSharpening...', end='', flush=True)    # Dog-Sharpening
-    # HR = dog_sharpener(HR)
-
-    [Lgx, Lgy, Lgz] = np.gradient(LR)
-    sampled_list = get_sampled_point_list(HR)
-
-    for split_idx, points in enumerate(sampled_list):
-        print('\r{} / {}'.format(split_idx + 1, C.PIXEL_TYPE), end='', flush=True)
-        start = time.time()
-        patchS, xS = init_buckets()
-
-        if C.USE_PIXEL_TYPE:
-            t = split_idx
-        else:
-            t = 0
-
-        for point_idx in prange(len(points)):
-            xP, yP, zP = points[point_idx]
-            patch = get_patch(LR, xP, yP, zP)
-
-            if not np.any(patch):
-                continue
-
-            gx, gy, gz = get_gxyz(Lgx, Lgy, Lgz, xP, yP, zP)
-
-            # Computational characteristics
-            angle_p, angle_t, strength, coherence = hashtable(gx, gy, gz, G_WEIGHT)
-            # angle_p, angle_t, strength, coherence = get_features(gx, gy, gz, weight)
-
-            # Compressed vector space
-            j = angle_p * C.Q_ANGLE_T * C.Q_COHERENCE * C.Q_STRENGTH + angle_t * C.Q_COHERENCE * C.Q_STRENGTH + strength * C.Q_COHERENCE + coherence
-            
-            pk = patch.reshape(-1)
-            x = HR[xP, yP, zP]
-
-            patchS[j].append(pk)
-            xS[j].append(x)
-
-            
-        print('\r{} / {}    last {} s '.format(split_idx + 1, C.PIXEL_TYPE, '%.3f' % (time.time() - start)), end='', flush=True)
-        start = time.time()
-
-        for j in range(C.Q_TOTAL):
-                if len(xS[j]) != 0:
-                    time11 = time.time()
-                    A = cp.array(patchS[j])
-                    b = cp.array(xS[j]).reshape(-1, 1)
-                    Qa = cp.array(Q[j, t])
-                    Va = cp.array(V[j, t])
-
-                    Qa += cp.dot(A.T, A)
-                    Va += cp.dot(A.T, b)
-
-                    Q[j, t] = Qa.get()
-                    V[j, t] = Va.get()
-
-        
-        print('   QV', '%.3f' % (time.time() - start), 's', end='', flush=True)
-
-    finished_files.append(fileName)
+    finished_files.append(file)
     
     print(' ' * 23, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
-    finished_files.append(fileName)
+    finished_files.append(file)
     ask_save_qv(Q, V, finished_files)
 
-save_qv(Q, V, finished_files)
+# save_qv(Q, V, finished_files)
 compute_h(Q, V)
+
+with open("./arrays/Qfactor_str" + str(C.R), "wb") as sp:
+    pickle.dump(stre, sp)
+
+with open("./arrays/Qfactor_coh" + str(C.R), "wb") as cp:
+    pickle.dump(cohe, cp)

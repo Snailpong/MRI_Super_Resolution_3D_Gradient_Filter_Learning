@@ -11,9 +11,10 @@ def get_lr(hr):
     return lr
     
 
-def get_lr_interpolation(hr):
-    downscaled_lr = zoom(hr, 0.5, order=2)
-    lr = zoom(downscaled_lr, 2, order=2)
+def get_lr_interpolation(im):
+    downscaled_lr = zoom(im, 1.0 / C.R, order=2, prefilter=False)
+    lr = np.clip(zoom(downscaled_lr, C.R, order=2, prefilter=False), 0, im.max())
+    lr[np.where(im == 0)] = 0
     return lr
 
 def get_lr_kspace(hr):

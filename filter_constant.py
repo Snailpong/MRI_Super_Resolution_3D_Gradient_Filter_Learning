@@ -10,11 +10,11 @@ H_FILE = './arrays/h'
 Q_ANGLE_T = 8
 Q_ANGLE_P = 8
 
-FILTER_LEN = 11
-FILTER_HALF = FILTER_LEN // 2
+PATCH_SIZE = 11
+PATCH_HALF = PATCH_SIZE // 2
 
-GRAD_LEN = 9
-GRAD_HALF = GRAD_LEN // 2
+GRADIENT_SIZE = 9
+GRADIENT_HALF = GRADIENT_SIZE // 2
 
 Q_LAMBDA1_SPLIT = np.array([0.0001, 0.001])
 Q_TRACE_SPLIT = np.array([0.0001, 0.001])
@@ -25,11 +25,11 @@ Q_STRENGTH = 3      # Do not edit!
 Q_COHERENCE = 3     # Do not edit!
 
 USE_PIXEL_TYPE = 'True'
-FACTOR = 2
-PIXEL_TYPE = FACTOR ** 3
+R = 2
+PIXEL_TYPE = R ** 3
 
 Q_TOTAL = Q_ANGLE_P * Q_ANGLE_T * Q_STRENGTH * Q_COHERENCE
-FILTER_VOL = FILTER_LEN ** 3
+FILTER_VOL = PATCH_SIZE ** 3
 
 TRAIN_DIV = 3
 SHARPEN = 'False'
@@ -44,8 +44,8 @@ def argument_parse():
     import argparse
     import sys
 
-    global QVF_FILE, H_FILE, Q_ANGLE_T, Q_ANGLE_P, GRAD_LEN, FILTER_LEN, FILTER_HALF
-    global Q_STRENGTH, Q_COHERENCE, FACTOR, PIXEL_TYPE, Q_TOTAL, FILTER_VOL, TRAIN_DIV
+    global QVF_FILE, H_FILE, Q_ANGLE_T, Q_ANGLE_P, GRADIENT_SIZE, PATCH_SIZE, PATCH_HALF
+    global Q_STRENGTH, Q_COHERENCE, R, PIXEL_TYPE, Q_TOTAL, FILTER_VOL, TRAIN_DIV
     global USE_PIXEL_TYPE, SHARPEN, BLEND_THRESHOLD, LR_TYPE, FEATURE_TYPE, TRAIN_FILE_MAX
 
     parser = argparse.ArgumentParser()
@@ -54,9 +54,9 @@ def argument_parse():
     parser.add_argument('--h_file', required=False, default=H_FILE)
     parser.add_argument('--q_angle_t', required=False, default=Q_ANGLE_T)
     parser.add_argument('--q_angle_p', required=False, default=Q_ANGLE_P)
-    parser.add_argument('--filter_len', required=False, default=FILTER_LEN)
-    parser.add_argument('--grad_len', required=False, default=GRAD_LEN)
-    parser.add_argument('--factor', required=False, default=FACTOR)
+    parser.add_argument('--filter_len', required=False, default=PATCH_SIZE)
+    parser.add_argument('--grad_len', required=False, default=GRADIENT_SIZE)
+    parser.add_argument('--factor', required=False, default=R)
     parser.add_argument('--train_div', required=False, default=TRAIN_DIV)
     parser.add_argument('--sharpen', required=False, default=SHARPEN)
     parser.add_argument('--use_pixel_type', required=False, default=USE_PIXEL_TYPE)
@@ -84,15 +84,15 @@ def argument_parse():
     H_FILE = args.h_file
     Q_ANGLE_T = int(args.q_angle_t)
     Q_ANGLE_P = int(args.q_angle_t)
-    FILTER_LEN = int(args.filter_len)
-    FILTER_HALF = FILTER_LEN // 2
-    GRAD_LEN = int(args.grad_len)
-    GRAD_HALF = GRAD_LEN // 2
-    FACTOR = int(args.factor)
+    PATCH_SIZE = int(args.filter_len)
+    PATCH_HALF = PATCH_SIZE // 2
+    GRADIENT_SIZE = int(args.grad_len)
+    GRAD_HALF = GRADIENT_SIZE // 2
+    R = int(args.factor)
     USE_PIXEL_TYPE = (args.use_pixel_type == 'True')
-    PIXEL_TYPE = FACTOR ** 3
+    PIXEL_TYPE = R ** 3
     Q_TOTAL = Q_ANGLE_P * Q_ANGLE_T * Q_STRENGTH * Q_COHERENCE
-    FILTER_VOL = FILTER_LEN ** 3
+    FILTER_VOL = PATCH_SIZE ** 3
     TRAIN_DIV = int(args.train_div)
     SHARPEN = (args.sharpen == 'True')
     BLEND_THRESHOLD = int(args.blend_threshold)

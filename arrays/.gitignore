@@ -1,3 +1,5 @@
 *.npy
 *.pkl
 *.npz
+Qfactor_str2
+Qfactor_coh2

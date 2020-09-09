@@ -5,6 +5,17 @@ import pickle
 import filter_constant as C
 
 
+def make_dataset(dir):
+    images = []
+    assert os.path.isdir(dir), '%s is not a valid directory' % dir
+    for root, _, fnames in sorted(os.walk(dir)):
+        for fname in fnames:
+            if fname.endswith('.nii.gz'):
+                path = os.path.join(root, fname)
+                images.append(path)
+    return images
+
+
 def ask_save_qv(Q, V, finished_files):
     try:
         a = input_timer("\r Enter to save >> ", 10)
@@ -31,12 +42,8 @@ def load_files():
         QVF.close()
         print('Done', flush=True)
     else:
-        if C.USE_PIXEL_TYPE:
-            Q = np.zeros((C.Q_TOTAL, C.PIXEL_TYPE, C.FILTER_VOL, C.FILTER_VOL))
-            V = np.zeros((C.Q_TOTAL, C.PIXEL_TYPE, C.FILTER_VOL, 1))
-        else:
-            Q = np.zeros((C.Q_TOTAL, 1, C.FILTER_VOL, C.FILTER_VOL))
-            V = np.zeros((C.Q_TOTAL, 1, C.FILTER_VOL, 1))
+        Q = np.zeros((C.Q_TOTAL, C.FILTER_VOL, C.FILTER_VOL))
+        V = np.zeros((C.Q_TOTAL, C.FILTER_VOL))
         finished_files = []
 
     return Q, V, finished_files
