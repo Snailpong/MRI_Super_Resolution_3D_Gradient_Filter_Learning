@@ -58,11 +58,11 @@ def determine_geometric_func():
 def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, instance):
     H, W, D = im_GX.shape
     for i1 in range(H - 2 * C.PATCH_HALF):
-        print(i1, patchNumber, quantization.sum(), quantization.max())
+        print(i1, patchNumber)
         for j1 in range(W - 2 * C.PATCH_HALF):
             for k1 in range(D - 2 * C.PATCH_HALF):
 
-                if random.random() > 0.33 or im[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
+                if random.random() > 0.2 or im[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
                     continue
 
                 idx1 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
@@ -155,7 +155,7 @@ def train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V, mar
         for j1 in range(yd, W - 2 * C.PATCH_HALF, C.R):
             for k1 in range(zd, D - 2 * C.PATCH_HALF, C.R):
 
-                if random.random() > 0.33 or im_HR[i1 + C.GRADIENT_HALF, j1 + C.GRADIENT_HALF, k1 + C.GRADIENT_HALF] == 0:
+                if random.random() > 0.33 or im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
                     continue
 
                 idx1 = (slice(i1, (i1 + 2 * C.PATCH_HALF + 1)), slice(j1, (j1 + 2 * C.PATCH_HALF + 1)),
