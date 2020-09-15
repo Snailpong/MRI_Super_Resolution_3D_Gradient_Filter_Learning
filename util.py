@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import pickle
+from math import ceil
 
 import filter_constant as C
 
@@ -66,6 +67,11 @@ def load_files():
         finished_files = []
 
     return Q, V, finished_files
+
+def chunk(lst, size):
+    return list(map(
+                   lambda x: lst[x * size:x * size + size],
+                   list(range(0, ceil(len(lst) / size)))))
 
 
 # Original Code Source : https://greenfishblog.tistory.com/257

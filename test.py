@@ -22,8 +22,7 @@ from skimage.measure import compare_psnr
 C.argument_parse()
 determine_geometric_func()
 
-C.R = 4
-C.USE_PIXEL_TYPE = False
+C.R = 3
 
 
 def make_image(im_LR, stre, cohe, h):
@@ -61,9 +60,8 @@ def make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, stre, cohe, h):
             patchY = im_GY[idx2]
             patchZ = im_GZ[idx2]
 
-            angle_p, angle_t, lamda, u = get_hash(patchX, patchY, patchZ, stre, cohe)
+            angle_p, angle_t, lamda, u = get_hash(patchX, patchY, patchZ, C.G_WEIGHT, stre, cohe)
             j = int(angle_p * Q_STRENGTH * Q_COHERENCE * Q_ANGLE_T + angle_t * Q_STRENGTH * Q_COHERENCE + lamda * Q_COHERENCE + u)
-            t = (i1 % R) * R * R + (j1 % R) * R + k1 % R
 
             patch1 = patch.ravel()
             result_image[i1 + PATCH_HALF, j1 + PATCH_HALF, k1 + PATCH_HALF] = np.dot(patch1, h[j])
@@ -81,19 +79,15 @@ if __name__ == '__main__':
     h, stre, cohe = load_upscale_array()
 
     for file_idx, file in enumerate(file_list):
-        filestart = time.time()
+        file_timer = time.time()
 
         file_name = file.split('\\')[-1].split('.')[0]
-        print('\r', end='')
-        print('' * 60, end='')
         print('\rProcessing ' + str(file_idx + 1) + '/' + str(len(file_list)) + ' image (' + file_name + ')')
 
         raw_image = nib.load(file).dataobj
         crop_image = mod_crop(raw_image)
         clipped_image = clip_image(crop_image)
         slice_area = crop_slice(clipped_image)
-
-        print(clipped_image.shape)
 
         im_blank_LR = get_lr_image(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
         im_LR = im_blank_LR[slice_area]
