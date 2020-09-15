@@ -9,36 +9,35 @@ from scipy.sparse.linalg import cg
 import filter_constant as C
 
 
-def dog_sharpener(im, sigma=0.85, alpha=1.414, r=15, k_size=(3,3,3)):
-    G1 = gaussian_3d_blur(im, k_size, sigma)
-    Ga1 = gaussian_3d_blur(im, k_size, sigma*alpha)
+def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
+    G1 = gaussian_3d_blur(input, ksize, sigma)
+    Ga1 = gaussian_3d_blur(input, ksize, sigma*alpha)
     D1 = add_weight(G1, 1+r, Ga1, -r, 0)
 
-    G2 = gaussian_3d_blur(Ga1, k_size, sigma)
-    Ga2 = gaussian_3d_blur(Ga1, k_size, sigma*alpha)
+    G2 = gaussian_3d_blur(Ga1, ksize, sigma)
+    Ga2 = gaussian_3d_blur(Ga1, ksize, sigma*alpha)
     D2 = add_weight(G2, 1+r, Ga2, -r, 0)
 
-    G3 = gaussian_3d_blur(Ga2, k_size, sigma)
-    Ga3 = gaussian_3d_blur(Ga2, k_size, sigma * alpha)
+    G3 = gaussian_3d_blur(Ga2, ksize, sigma)
+    Ga3 = gaussian_3d_blur(Ga2, ksize, sigma * alpha)
     D3 = add_weight(G3, 1+r, Ga3, -r, 0)
 
-    B1 = blend_image(im, D3)
-    B1 = blend_image(im, B1)
+
+    B1 = blend_image(input, D3)
+    B1 = blend_image(input, B1)
     B2 = blend_image(B1, D2)
-    B2 = blend_image(im, B2)
+    B2 = blend_image(input, B2)
     B3 = blend_image(B2, D1)
-    B3 = blend_image(im, B3)
+    B3 = blend_image(input, B3)
 
     output = np.clip(B3, 0, 1)
 
     return output
 
-
 def clip_image(im):
     clip_value = np.sort(im.ravel())[int(np.prod(im.shape) * 0.999)]
     im = np.clip(im, 0, clip_value)
     return im
-
 
 @njit(parallel=True)
 def ct_descriptor(im):
@@ -61,7 +60,6 @@ def ct_descriptor(im):
                 Census[i, j, k] = cen
     Census = Census / 26
     return Census, CT
-
 
 @njit
 def blend_weight(LR, HR, ctLR, ctHR, threshold = 10):
@@ -86,7 +84,6 @@ def blend_weight(LR, HR, ctLR, ctHR, threshold = 10):
                     blended[i, j, k] = HR[i, j, k]
     return blended
 
-
 @njit
 def blend_image(LR, HR, threshold = 10):
     censusLR, ctLR = ct_descriptor(LR)
@@ -94,19 +91,18 @@ def blend_image(LR, HR, threshold = 10):
     blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended
 
-
 @njit
 def blend_image2(LR, SR, threshold = 10):
     H, W, D = LR.shape
     blended = SR.copy()
     print(blended.shape)
-    window_size = 3
-    a = int((window_size - 1) / 2)
+    windowSize = 3
+    C = np.int((windowSize - 1) / 2)
 
-    for i in range(a, H - a):
-        for j in range(a, W - a):
-            for k in range(a, D - a):
-                cur = np.sort(SR[i-a: i+a+1, j-a: j+a+1, k-a: k+a+1].ravel())
+    for i in range(C, H - C):
+        for j in range(C, W - C):
+            for k in range(C, D - C):
+                cur = np.sort(SR[i-C: i+C+1, j-C: j+C+1, k-C: k+C+1].ravel())
                 # cur = cur[2:27-2]
 
                 if cur[0] > SR[i, j, k] or cur[-1] < SR[i, j, k]:
@@ -114,46 +110,41 @@ def blend_image2(LR, SR, threshold = 10):
     # blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended
 
-
 @njit
 def blend_image3(LR, SR, threshold = 10):
     H, W, D = LR.shape
     blended = SR.copy()
     print(blended.shape)
-    window_size = 3
-    a = np.int((window_size - 1) / 2)
+    windowSize = 3
+    C = np.int((windowSize - 1) / 2)
 
-    for i in range(a, H - a):
-        for j in range(a, W - a):
-            for k in range(a, D - a):
-                std_sr = np.std(LR[i-a: i+a+1, j-a: j+a+1, k-a: k+a+1].ravel())
+    for i in range(C, H - C):
+        for j in range(C, W - C):
+            for k in range(C, D - C):
+                std_sr = np.std(LR[i-C: i+C+1, j-C: j+C+1, k-C: k+C+1].ravel())
 
                 if abs(LR[i, j, k] - SR[i, j, k]) > std_sr * 3:
                     blended[i, j, k] = LR[i, j, k]
     # blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended
 
-
-def gaussian_3d_blur(im, k_size=(3, 3, 3), sigma=0.85):
-    g_filter = gaussian_3d(k_size, sigma)
-    output = convolve(im, g_filter)
+def gaussian_3d_blur(input, ksize=(3,3,3), sigma=0.85):
+    filter = gaussian_3d(ksize, sigma)
+    output = convolve(input, filter)
     return output
-
 
 def add_weight(i1, w1, i2, w2, bias):
     return np.dot(i1, w1) + np.dot(i2, w2) + bias
 
-
-def gaussian_3d(shape=(3, 3, 3), sigma=0.85):
-    m,n,o = [(ss - 1.) / 2. for ss in shape]
+def gaussian_3d(shape=(3,3,3), sigma=0.85):
+    m,n,o = [(ss-1.)/2. for ss in shape]
     z, y, x = np.ogrid[-m:m+1,-n:n+1, -o:o+1]
-    h = np.exp(-(x*x + y*y + z*z) / (2.*sigma*sigma))
-    h[h < np.finfo(h.dtype).eps*h.max()] = 0
+    h = np.exp( -(x*x + y*y + z*z) / (2.*sigma*sigma) )
+    h[ h < np.finfo(h.dtype).eps*h.max() ] = 0
     sumh = h.sum()
     if sumh != 0:
         h /= sumh
     return h
-
 
 def get_normalized_gaussian():
     weight = gaussian_3d((C.GRADIENT_SIZE, C.GRADIENT_SIZE, C.GRADIENT_SIZE))
@@ -161,13 +152,11 @@ def get_normalized_gaussian():
     weight = np.array(weight, dtype=np.float32)
     return weight
 
-
 def clipped_hr(hr):
-    clip_max = np.sort(hr.ravel())[int(np.prod(hr.shape) * 0.999)]
-    hr = np.clip(hr, 0, clip_max)
+    clipvalue = np.sort(hr.ravel())[int(np.prod(hr.shape) * 0.999)]
+    hr = np.clip(hr, 0, clipvalue)
     return hr
-
 
 def normalization_hr(hr):
     hr = clipped_hr(hr)
-    return hr / hr.max()
+    return hr/hr.max()
