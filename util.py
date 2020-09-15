@@ -23,19 +23,38 @@ def ask_save_qv(Q, V, finished_files):
     except TimeoutError as e:
         pass
 
+
 def save_qv(Q, V, finished_files):
     print('\rSaving QVF...', end='', flush=True)
-    np.savez(C.QVF_FILE, Q=Q, V=V, finished_files=np.array(finished_files))
+    np.savez('{}QVF_{}'.format(C.ARRAY_DIR, C.R), Q=Q, V=V, finished_files=np.array(finished_files))
+
+
+def save_boundary(stre, cohe):
+    np.savez('{}boundary_{}'.format(C.ARRAY_DIR, C.R), stre=stre, cohe=cohe)
+
+
+def load_upscale_array():
+    h = np.load('{}h_{}.npy'.format(C.ARRAY_DIR, C.R))
+    h = np.array(h, dtype=np.float32)
+
+    boundary = np.load('{}boundary_{}.npz'.format(C.ARRAY_DIR, C.R))
+    stre = boundary['cohe']
+    cohe = boundary['stre']
+    boundary.close()
+
+    return h, stre, cohe
+
 
 def init_buckets():
     patchS = [[] for j in range(C.Q_TOTAL)]
     xS = [[] for j in range(C.Q_TOTAL)]
     return patchS, xS
 
+
 def load_files():
-    if os.path.isfile('{}.npz'.format(C.QVF_FILE)):
+    if os.path.isfile('{}QVF_{}.npz'.format(C.ARRAY_DIR, C.R)):
         print('Loading QVF...', end=' ', flush=True)
-        QVF = np.load('{}.npz'.format(C.QVF_FILE))
+        QVF = np.load('{}QVF_{}.npz'.format(C.ARRAY_DIR, C.R))
         Q = QVF['Q']
         V = QVF['V']
         finished_files = QVF['finished_files'].tolist()
@@ -47,6 +66,7 @@ def load_files():
         finished_files = []
 
     return Q, V, finished_files
+
 
 # Original Code Source : https://greenfishblog.tistory.com/257
 def input_timer(prompt, timeout_sec):

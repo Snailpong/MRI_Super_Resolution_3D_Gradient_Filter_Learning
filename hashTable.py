@@ -9,6 +9,7 @@ import filter_constant as C
 
 strength_func, coherence_func = None, None
 
+
 def determine_geometric_func():
     global strength_func, coherence_func
 
@@ -53,9 +54,10 @@ def determine_geometric_func():
     elif C.FEATURE_TYPE == 'trace_fa':
         strength_func, coherence_func = trace, fa
 
+
 # Quantization procedure to get the optimized strength and coherence boundaries
 @njit
-def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, instance):
+def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, quantization):
     H, W, D = im_GX.shape
     for i1 in range(H - 2 * C.PATCH_HALF):
         print(i1, patchNumber)
@@ -67,22 +69,22 @@ def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, i
 
                 idx1 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
                         slice(k1+1, (k1 + 2 * C.GRADIENT_HALF + 2)))
-                patch = im[idx1]
 
                 patchX = im_GX[idx1]
                 patchY = im_GY[idx1]
                 patchZ = im_GZ[idx1]
-                strength, coherence = grad(patchX, patchY, patchZ, w)
+                strength, coherence = grad(patchX, patchY, patchZ)
 
                 quantization[patchNumber, 0] = strength
                 quantization[patchNumber, 1] = coherence
                 patchNumber += 1
     return quantization, patchNumber
 
+
 @njit
-def get_hash(patchX, patchY, patchZ, weight, stre, cohe):
-    G = np.vstack((patchX.ravel(), patchY.ravel(), patchZ.ravel())).T
-    x = G.T @ weight @ G
+def get_hash(gx, gy, gz, stre, cohe):
+    G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
+    x = G.T @ C.G_WEIGHT @ G
     w, v = np.linalg.eig(x)
 
     index = w.argsort()[::-1]
@@ -110,10 +112,11 @@ def get_hash(patchX, patchY, patchZ, weight, stre, cohe):
 
     return angle_p, angle_t, lamda, u
 
+
 @njit
-def grad(patchX, patchY, patchZ, weight):
+def grad(patchX, patchY, patchZ):
     G = np.vstack((patchX.ravel(), patchY.ravel(), patchZ.ravel())).T
-    x = G.T @ weight @ G
+    x = G.T @ C.G_WEIGHT @ G
     w, v = np.linalg.eig(x)
 
     index = w.argsort()[::-1]
@@ -127,25 +130,27 @@ def grad(patchX, patchY, patchZ, weight):
 
     return lamda, u
 
-def train_qv(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V, mark):
+
+def train_qv(im_LR, im_HR, stre, cohe, Q, V):
+    im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
     for t in range(C.R ** 3):
-        Q, V, mark = train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V, mark)
+        Q, V, mark = train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, stre, cohe, Q, V)
     return Q, V, mark
 
 
-def init_buckets(Q_TOTAL):
-    patchS = [[] for j in range(Q_TOTAL)]
-    xS = [[] for j in range(Q_TOTAL)]
+def init_buckets():
+    patchS = [[] for j in range(C.Q_TOTAL)]
+    xS = [[] for j in range(C.Q_TOTAL)]
     return patchS, xS
 
 
-def train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V, mark):
+def train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, stre, cohe, Q, V):
     H, W, D = im_HR.shape
     xd = (t // (C.R * C.R)) % C.R
     yd = (t // C.R) % C.R
     zd = t % C.R
 
-    patchS, xS = init_buckets(C.Q_ANGLE_P * C.Q_ANGLE_T * C.Q_STRENGTH * C.Q_COHERENCE)
+    patchS, xS = init_buckets()
     timer = time.time()
 
     for i1 in range(xd, H - 2 * C.PATCH_HALF, C.R):
@@ -155,7 +160,7 @@ def train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V, mar
         for j1 in range(yd, W - 2 * C.PATCH_HALF, C.R):
             for k1 in range(zd, D - 2 * C.PATCH_HALF, C.R):
 
-                if random.random() > 0.33 or im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
+                if random.random() > C.SAMPLE_RATE or im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
                     continue
 
                 idx1 = (slice(i1, (i1 + 2 * C.PATCH_HALF + 1)), slice(j1, (j1 + 2 * C.PATCH_HALF + 1)),
@@ -166,11 +171,11 @@ def train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V, mar
                 idx2 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
                         slice(k1+1, (k1 + 2 * C.GRADIENT_HALF + 2)))
 
-                patchX = im_GX[idx2]
-                patchY = im_GY[idx2]
-                patchZ = im_GZ[idx2]
+                gx = im_GX[idx2]
+                gy = im_GY[idx2]
+                gz = im_GZ[idx2]
 
-                angle_p, angle_t, lamda, u = get_hash(patchX, patchY, patchZ, w, stre, cohe)
+                angle_p, angle_t, lamda, u = get_hash(gx, gy, gz, stre, cohe)
                 j = int(angle_p * C.Q_STRENGTH * C.Q_COHERENCE * C.Q_ANGLE_T + angle_t * C.Q_STRENGTH * C.Q_COHERENCE + lamda * C.Q_COHERENCE + u)
 
                 patch1 = patch.reshape(-1)
@@ -196,11 +201,7 @@ def train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V, mar
 
     print('   qv {} s'.format((time.time() - timer) * 100 // 10 / 10), end='')
 
-    return Q, V, mark
-
-
-
-
+    return Q, V
 
 
 @njit
@@ -228,6 +229,7 @@ def get_lambda_angle(gx, gy, gz, weight):
 
     return angle_p, angle_t, lamb
 
+
 @njit
 def geometric_quantitization(gx, gy, gz, weight):
     global strength_func, coherence_func
@@ -237,130 +239,3 @@ def geometric_quantitization(gx, gy, gz, weight):
     coherence = coherence_func(lamb)
 
     return angle_p, angle_t, strength, coherence
-
-@njit
-def hashtable(gx, gy, gz, weight):
-    G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
-    x0 = np.dot(G.T, weight)
-    x = np.dot(x0, G)
-    [eigenvalues, eigenvectors] = np.linalg.eig(x)
-
-    idx = eigenvalues.argsort()[::-1]
-    eigenvalues = eigenvalues[idx]
-    eigenvectors = eigenvectors[:, idx]
-
-    # For angle
-    angle_p = atan2(eigenvectors[1, 0], eigenvectors[0, 0])
-    angle_t = acos(eigenvectors[2, 0] / (np.linalg.norm(eigenvectors[:, 0]) + 0.0001))
-
-    if angle_p < 0:
-        angle_p += pi
-        angle_t = pi - angle_t
-
-    # For strength
-    strength = eigenvalues[0]
-
-    # For coherence
-    lamda1 = sqrt(eigenvalues[0])
-    lamda2 = sqrt(eigenvalues[1])
-    coherence = (lamda1 - lamda2) / (lamda1 + lamda2 + 0.0001)
-
-    if strength < 0.0001:
-        strength = 0
-    elif strength > 0.001:
-        strength = 2
-    else:
-        strength = 1
-    if coherence < 0.25:
-        coherence = 0
-    elif coherence > 0.5:
-        coherence = 2
-    else:
-        coherence = 1
-
-    return int(angle_p), int(angle_t), int(strength), int(coherence)
-
-
-@njit
-def get_features(gx, gy, gz, weight):
-    G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
-    x0 = np.dot(G.T, weight)
-    x = np.dot(x0, G)
-    [eigenvalues, eigenvectors] = np.linalg.eig(x)
-
-    idx = eigenvalues.argsort()[::-1]
-    [l1, l2, l3] = eigenvalues[idx]
-    [vx, vy, vz] = eigenvectors[:, idx[0]]
-
-    # For angle
-    angle_p = atan2(vy, vx)
-    angle_t = acos(vz / sqrt((vx**2+vy**2+vz**2) + 1e-10))
-
-    if angle_p < 0:
-        angle_p += pi
-        angle_t = pi - angle_t
-
-    strength = l1
-    fa = sqrt(((l1-l2)**2+(l2-l3)**2+(l1-l3)**2) / (max(l1**2+l2**2+l3**2,1e-30)) / 2)
-
-    # Quantization
-    angle_p = int(angle_p / pi * C.Q_ANGLE_P - 0.0001)
-    angle_t = int(angle_t / pi * C.Q_ANGLE_T - 0.0001)
-
-    if strength < 0.0001:
-        strength = 0
-    elif strength > 0.001:
-        strength = 2
-    else:
-        strength = 1
-
-    if fa < 0.05:
-        fa = 0
-    elif fa > 0.1:
-        fa = 2
-    else:
-        fa = 1
-
-    return angle_p, angle_t, int(strength), int(fa)
-
-@njit
-def get_features2(gx, gy, gz, weight):
-    G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
-    x0 = np.dot(G.T, weight)
-    x = np.dot(x0, G)
-    [eigenvalues, eigenvectors] = np.linalg.eig(x)
-
-    idx = eigenvalues.argsort()[::-1]
-    [l1, l2, l3] = eigenvalues[idx]
-    [vx, vy, vz] = eigenvectors[:, idx[0]]
-
-    # For angle
-    angle_p = atan2(vy, vx)
-    angle_t = acos(vz / sqrt((vx**2+vy**2+vz**2) + 1e-10))
-
-    if angle_p < 0:
-        angle_p += pi
-        angle_t = pi - angle_t
-
-    trace = l1 + l2 + l3
-    fa = sqrt(((l1-l2)**2+(l2-l3)**2+(l1-l3)**2)/(max(l1**2+l2**2+l3**2,1e-30))/2)
-
-    # Quantization
-    angle_p = int(angle_p / pi * C.Q_ANGLE_P - 0.0001)
-    angle_t = int(angle_t / pi * C.Q_ANGLE_T - 0.0001)
-
-    if trace < 0.0001:
-        trace = 0
-    elif trace > 0.001:
-        trace = 2
-    else:
-        trace = 1
-
-    if fa < 0.05:
-        fa = 0
-    elif fa > 0.1:
-        fa = 2
-    else:
-        fa = 1
-
-    return angle_p, angle_t, int(trace), int(fa)

@@ -17,6 +17,7 @@ def get_lr_interpolation(im):
     lr[np.where(im == 0)] = 0
     return lr
 
+
 def get_lr_kspace(hr):
     imgfft = np.fft.fftn(hr)
     imgfft_zero = np.zeros((imgfft.shape[0], imgfft.shape[1], imgfft.shape[2]))
@@ -36,6 +37,7 @@ def get_lr_kspace(hr):
     imgifft3 = np.fft.ifftn(imgfft_shift2)
     lr = abs(imgifft3)
     return lr
+
 
 def get_lr_kspace2(hr):
     imgfft = np.fft.fftn(hr)

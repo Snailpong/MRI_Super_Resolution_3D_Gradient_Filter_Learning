@@ -1,11 +1,10 @@
-import numpy as np
+from filter_func import get_normalized_gaussian
 
 TRAIN_GLOB = './train/*.nii.gz'
 TEST_GLOB = "./test/*.nii.gz"
 RESULT_DIR = "./result/"
 
-QVF_FILE = './arrays/QVF'
-H_FILE = './arrays/h'
+ARRAY_DIR = './arrays/'
 
 Q_ANGLE_T = 8
 Q_ANGLE_P = 8
@@ -15,25 +14,22 @@ PATCH_HALF = PATCH_SIZE // 2
 
 GRADIENT_SIZE = 9
 GRADIENT_HALF = GRADIENT_SIZE // 2
+G_WEIGHT = get_normalized_gaussian()
 
-Q_LAMBDA1_SPLIT = np.array([0.0001, 0.001])
-Q_TRACE_SPLIT = np.array([0.0001, 0.001])
-Q_COH2_SPLIT = np.array([0.25, 0.5])
-Q_FA_SPLIT = np.array([0.05, 0.1])
-
-Q_STRENGTH = 3      # Do not edit!
-Q_COHERENCE = 3     # Do not edit!
+Q_STRENGTH = 3
+Q_COHERENCE = 3
 
 USE_PIXEL_TYPE = 'True'
-R = 2
-PIXEL_TYPE = R ** 3
+R = 3
 
 Q_TOTAL = Q_ANGLE_P * Q_ANGLE_T * Q_STRENGTH * Q_COHERENCE
 FILTER_VOL = PATCH_SIZE ** 3
 
-TRAIN_DIV = 3
+SAMPLE_RATE = 0.33
 SHARPEN = 'False'
 BLEND_THRESHOLD = 10
+
+TOTAL_SAMPLE_BORDER = 4000000
 
 LR_TYPE = 'interpolation'
 FEATURE_TYPE = 'lambda1_coh2'
@@ -50,8 +46,6 @@ def argument_parse():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--qvf_file', required=False, default=QVF_FILE)
-    parser.add_argument('--h_file', required=False, default=H_FILE)
     parser.add_argument('--q_angle_t', required=False, default=Q_ANGLE_T)
     parser.add_argument('--q_angle_p', required=False, default=Q_ANGLE_P)
     parser.add_argument('--filter_len', required=False, default=PATCH_SIZE)
@@ -80,8 +74,6 @@ def argument_parse():
     assert args.feature_type in ['lambda1_coh2', 'lambda1_fa', 'trace_coh2', 'trace_fa']
     assert int(args.train_file_max) >= 1
 
-    QVF_FILE = args.qvf_file
-    H_FILE = args.h_file
     Q_ANGLE_T = int(args.q_angle_t)
     Q_ANGLE_P = int(args.q_angle_t)
     PATCH_SIZE = int(args.filter_len)
