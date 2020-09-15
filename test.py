@@ -47,7 +47,7 @@ def make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h
                     slice(k1, (k1 + 2 * PATCH_HALF + 1)))
             patch = im_LR[idx1]
 
-            if im_LR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
+            if im_LR[i1 + C.GRADIENT_HALF, j1 + C.GRADIENT_HALF, k1 + C.GRADIENT_HALF] == 0:
                     continue
 
             idx2 = (slice(i1+1, (i1 + 2 * GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * GRADIENT_HALF + 2)),

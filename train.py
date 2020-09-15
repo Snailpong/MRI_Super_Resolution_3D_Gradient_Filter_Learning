@@ -98,8 +98,10 @@ for file_idx, file in enumerate(file_list):
 
     Q, V, mark = train_qv(im_LR, im_HR, im_GX, im_GY, im_GZ, G_WEIGHT, stre, cohe, Q, V, mark)  # get Q, V of each patch
 
-    if file_idx + 1 == 100:
+    if file_idx + 1 == 10:
         break
+
+    finished_files.append(file)
     
     print(' ' * 23, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
