@@ -67,6 +67,7 @@ def argument_parse():
     assert int(args.factor) >= 2
     assert int(args.train_div) >= 1
     assert args.sharpen in ['True', 'False']
+    assert args.use_pixel_type in ['True', 'False']
     assert 1 <= int(args.blend_threshold) <= 26
     assert args.lr_type in ['kspace', 'interpolation']
     assert args.feature_type in ['lambda1_coh2', 'lambda1_fa', 'trace_coh2', 'trace_fa']

@@ -13,6 +13,8 @@ def get_train_image(file):
     clipped_image = clip_image(crop_image)
     slice_area = crop_slice(clipped_image)
 
+    im_LR = get_lr_image(clipped_image)  # Prepare the cheap-upscaling images (optional: JPEG compression)
+
     im_blank_LR = get_lr_image(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
     im_LR = im_blank_LR[slice_area]
     im_HR = clipped_image[slice_area] / clipped_image.max()

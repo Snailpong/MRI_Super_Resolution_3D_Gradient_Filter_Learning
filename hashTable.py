@@ -5,7 +5,6 @@ from math import atan2, floor, pi, ceil, isnan, sqrt, acos, pi
 import random
 from numba import jit, njit
 
-from util import *
 import filter_constant as C
 
 strength_func, coherence_func = None, None
@@ -58,10 +57,11 @@ def determine_geometric_func():
 
 # Quantization procedure to get the optimized strength and coherence boundaries
 @njit
-def quantization_border(im, w, patchNumber, quantization):
+def quantization_border(im, patchNumber, quantization):
     H, W, D = im.shape
     im_GX, im_GY, im_GZ = np.gradient(im)  # Calculate the gradient images
     for i1 in range(H - 2 * C.PATCH_HALF):
+        print(i1, patchNumber)
         for j1 in range(W - 2 * C.PATCH_HALF):
             for k1 in range(D - 2 * C.PATCH_HALF):
 
@@ -74,7 +74,7 @@ def quantization_border(im, w, patchNumber, quantization):
                 patchX = im_GX[idx1]
                 patchY = im_GY[idx1]
                 patchZ = im_GZ[idx1]
-                strength, coherence = grad(patchX, patchY, patchZ, w)
+                strength, coherence = grad(patchX, patchY, patchZ)
 
                 quantization[patchNumber, 0] = strength
                 quantization[patchNumber, 1] = coherence
@@ -83,9 +83,9 @@ def quantization_border(im, w, patchNumber, quantization):
 
 
 @njit
-def get_hash(gx, gy, gz, w, stre, cohe):
+def get_hash(gx, gy, gz, stre, cohe):
     G = np.vstack((gx.ravel(), gy.ravel(), gz.ravel())).T
-    x = G.T @ w @ G
+    x = G.T @ C.G_WEIGHT @ G
     w, v = np.linalg.eig(x)
 
     index = w.argsort()[::-1]
@@ -115,9 +115,9 @@ def get_hash(gx, gy, gz, w, stre, cohe):
 
 
 @njit
-def grad(patchX, patchY, patchZ, w):
+def grad(patchX, patchY, patchZ):
     G = np.vstack((patchX.ravel(), patchY.ravel(), patchZ.ravel())).T
-    x = G.T @ w @ G
+    x = G.T @ C.G_WEIGHT @ G
     w, v = np.linalg.eig(x)
 
     index = w.argsort()[::-1]
@@ -134,7 +134,8 @@ def grad(patchX, patchY, patchZ, w):
 
 def train_qv(im_LR, im_HR, stre, cohe, Q, V):
     im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
-    Q, V = train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, stre, cohe, Q, V)
+    for t in range(C.R ** 3):
+        Q, V = train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, stre, cohe, Q, V)
     return Q, V
 
 
@@ -144,60 +145,62 @@ def init_buckets():
     return patchS, xS
 
 
-def train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, stre, cohe, Q, V):
+def train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, stre, cohe, Q, V):
     H, W, D = im_HR.shape
+    xd = (t // (C.R * C.R)) % C.R
+    yd = (t // C.R) % C.R
+    zd = t % C.R
 
-    xyz_range = [[x, y, z] for x in range(H - 2 * C.PATCH_HALF) for y in range(W - 2 * C.PATCH_HALF) for z in range(D - 2 * C.PATCH_HALF)]
-    sample_range = random.sample(xyz_range, len(xyz_range) // C.TRAIN_DIV)
-    point_list = chunk(sample_range, len(sample_range) // C.TRAIN_DIV + 1)
+    patchS, xS = init_buckets()
     timer = time.time()
 
-    for sample_idx, point_list1 in enumerate(point_list):
-        print('\r{} / {}   '.format(sample_idx + 1, len(point_list)), end='')
-        timer = time.time()
-        patchS, xS = init_buckets()
-        for i1, j1, k1 in point_list1:
-
-            if im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
-                continue
-
-            idx1 = (slice(i1, (i1 + 2 * C.PATCH_HALF + 1)), slice(j1, (j1 + 2 * C.PATCH_HALF + 1)),
-                    slice(k1, (k1 + 2 * C.PATCH_HALF + 1)))
-
-            patch = im_LR[idx1]
-
-            idx2 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
-                    slice(k1+1, (k1 + 2 * C.GRADIENT_HALF + 2)))
-
-            gx = im_GX[idx2]
-            gy = im_GY[idx2]
-            gz = im_GZ[idx2]
-
-            angle_p, angle_t, lamda, u = get_hash(gx, gy, gz, C.G_WEIGHT, stre, cohe)
-            j = int(angle_p * C.Q_STRENGTH * C.Q_COHERENCE * C.Q_ANGLE_T + angle_t * C.Q_STRENGTH * C.Q_COHERENCE + lamda * C.Q_COHERENCE + u)
-
-            patch1 = patch.reshape(-1)
-            x1 = im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF]
-
-            patchS[j].append(patch1)
-            xS[j].append(x1)
-        print('{} s'.format(((time.time() - timer) * 1000 // 10) / 100), end='')
+    for i1 in range(xd, H - 2 * C.PATCH_HALF, C.R):
+        print('\r{} / {}    {} / {}    {} s'.format(t+1, C.R ** 3, i1 // C.R, (H - 2 * C.PATCH_HALF) // C.R, ((time.time() - timer) * 1000 // 10) / 100), end='')
         timer = time.time()
 
-        for j in range(C.Q_TOTAL):
-            if len(xS[j]) != 0:
-                A = cp.array(patchS[j])
-                b = cp.array(xS[j]).reshape(-1, 1)
-                Qa = cp.array(Q[j])
-                Va = cp.array(V[j])
+        for j1 in range(yd, W - 2 * C.PATCH_HALF, C.R):
+            for k1 in range(zd, D - 2 * C.PATCH_HALF, C.R):
 
-                Qa += cp.dot(A.T, A)
-                Va += cp.dot(A.T, b).reshape(-1)
+                if random.random() > C.SAMPLE_RATE or im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
+                    continue
 
-                Q[j] = Qa.get()
-                V[j] = Va.get()
+                idx1 = (slice(i1, (i1 + 2 * C.PATCH_HALF + 1)), slice(j1, (j1 + 2 * C.PATCH_HALF + 1)),
+                        slice(k1, (k1 + 2 * C.PATCH_HALF + 1)))
 
-        print('   qv {} s'.format((time.time() - timer) * 100 // 10 / 10), end='')
+                patch = im_LR[idx1]
+
+                idx2 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
+                        slice(k1+1, (k1 + 2 * C.GRADIENT_HALF + 2)))
+
+                gx = im_GX[idx2]
+                gy = im_GY[idx2]
+                gz = im_GZ[idx2]
+
+                angle_p, angle_t, lamda, u = get_hash(gx, gy, gz, stre, cohe)
+                j = int(angle_p * C.Q_STRENGTH * C.Q_COHERENCE * C.Q_ANGLE_T + angle_t * C.Q_STRENGTH * C.Q_COHERENCE + lamda * C.Q_COHERENCE + u)
+
+                patch1 = patch.reshape(-1)
+                x1 = im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF]
+
+                patchS[j].append(patch1)
+                xS[j].append(x1)
+
+    timer = time.time()
+
+    for j in range(C.Q_TOTAL):
+        if len(xS[j]) != 0:
+            A = cp.array(patchS[j])
+            b = cp.array(xS[j]).reshape(-1, 1)
+            Qa = cp.array(Q[j])
+            Va = cp.array(V[j])
+
+            Qa += cp.dot(A.T, A)
+            Va += cp.dot(A.T, b).reshape(-1)
+
+            Q[j] = Qa.get()
+            V[j] = Va.get()
+
+    print('   qv {} s'.format((time.time() - timer) * 100 // 10 / 10), end='')
 
     return Q, V
 
