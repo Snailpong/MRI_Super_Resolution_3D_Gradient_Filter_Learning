@@ -1,9 +1,28 @@
 import numpy as np
 from scipy.ndimage import zoom
+import nibabel as nib
 
+from crop_black import *
+from filter_func import *
 import filter_constant as C
 
-def get_lr(hr):
+
+def get_train_image(file):
+    raw_image = nib.load(file).dataobj
+    crop_image = mod_crop(raw_image)
+    clipped_image = clip_image(crop_image)
+    slice_area = crop_slice(clipped_image)
+
+    im_LR = get_lr_image(clipped_image)  # Prepare the cheap-upscaling images (optional: JPEG compression)
+
+    im_blank_LR = get_lr_image(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
+    im_LR = im_blank_LR[slice_area]
+    im_HR = clipped_image[slice_area] / clipped_image.max()
+
+    return im_HR, im_LR
+
+
+def get_lr_image(hr):
     if C.LR_TYPE == 'interpolation':
         lr = get_lr_interpolation(hr)   # Using Image domain
     else:

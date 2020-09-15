@@ -95,7 +95,7 @@ if __name__ == '__main__':
 
         print(clipped_image.shape)
 
-        im_blank_LR = get_lr(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
+        im_blank_LR = get_lr_image(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
         im_LR = im_blank_LR[slice_area]
         im_HR = clipped_image[slice_area] / clipped_image.max()
 
