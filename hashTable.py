@@ -57,9 +57,8 @@ def determine_geometric_func():
 
 # Quantization procedure to get the optimized strength and coherence boundaries
 @njit
-def quantization_border(im, patchNumber, quantization):
-    H, W, D = im.shape
-    im_GX, im_GY, im_GZ = np.gradient(im)  # Calculate the gradient images
+def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, quantization):
+    H, W, D = im_GX.shape
     for i1 in range(H - 2 * C.PATCH_HALF):
         print(i1, patchNumber)
         for j1 in range(W - 2 * C.PATCH_HALF):
@@ -135,8 +134,8 @@ def grad(patchX, patchY, patchZ):
 def train_qv(im_LR, im_HR, stre, cohe, Q, V):
     im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
     for t in range(C.R ** 3):
-        Q, V = train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, stre, cohe, Q, V)
-    return Q, V
+        Q, V, mark = train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, stre, cohe, Q, V)
+    return Q, V, mark
 
 
 def init_buckets():

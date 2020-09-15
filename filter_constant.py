@@ -19,12 +19,12 @@ G_WEIGHT = get_normalized_gaussian()
 Q_STRENGTH = 3
 Q_COHERENCE = 3
 
+USE_PIXEL_TYPE = 'True'
 R = 3
 
 Q_TOTAL = Q_ANGLE_P * Q_ANGLE_T * Q_STRENGTH * Q_COHERENCE
 FILTER_VOL = PATCH_SIZE ** 3
 
-TRAIN_DIV = 3
 SAMPLE_RATE = 0.33
 SHARPEN = 'False'
 BLEND_THRESHOLD = 10
@@ -40,9 +40,9 @@ def argument_parse():
     import argparse
     import sys
 
-    global Q_ANGLE_T, Q_ANGLE_P, GRADIENT_SIZE, GRADIENT_HALF, PATCH_SIZE, PATCH_HALF
-    global Q_STRENGTH, Q_COHERENCE, R, Q_TOTAL, FILTER_VOL, TRAIN_DIV
-    global SHARPEN, BLEND_THRESHOLD, LR_TYPE, FEATURE_TYPE, TRAIN_FILE_MAX
+    global QVF_FILE, H_FILE, Q_ANGLE_T, Q_ANGLE_P, GRADIENT_SIZE, PATCH_SIZE, PATCH_HALF
+    global Q_STRENGTH, Q_COHERENCE, R, PIXEL_TYPE, Q_TOTAL, FILTER_VOL, TRAIN_DIV
+    global USE_PIXEL_TYPE, SHARPEN, BLEND_THRESHOLD, LR_TYPE, FEATURE_TYPE, TRAIN_FILE_MAX
 
     parser = argparse.ArgumentParser()
 
@@ -53,6 +53,7 @@ def argument_parse():
     parser.add_argument('--factor', required=False, default=R)
     parser.add_argument('--train_div', required=False, default=TRAIN_DIV)
     parser.add_argument('--sharpen', required=False, default=SHARPEN)
+    parser.add_argument('--use_pixel_type', required=False, default=USE_PIXEL_TYPE)
     parser.add_argument('--blend_threshold', required=False, default=BLEND_THRESHOLD)
     parser.add_argument('--lr_type', required=False, default=LR_TYPE)
     parser.add_argument('--feature_type', required=False, default=FEATURE_TYPE)
@@ -78,8 +79,10 @@ def argument_parse():
     PATCH_SIZE = int(args.filter_len)
     PATCH_HALF = PATCH_SIZE // 2
     GRADIENT_SIZE = int(args.grad_len)
-    GRADIENT_HALF = GRADIENT_SIZE // 2
+    GRAD_HALF = GRADIENT_SIZE // 2
     R = int(args.factor)
+    USE_PIXEL_TYPE = (args.use_pixel_type == 'True')
+    PIXEL_TYPE = R ** 3
     Q_TOTAL = Q_ANGLE_P * Q_ANGLE_T * Q_STRENGTH * Q_COHERENCE
     FILTER_VOL = PATCH_SIZE ** 3
     TRAIN_DIV = int(args.train_div)
