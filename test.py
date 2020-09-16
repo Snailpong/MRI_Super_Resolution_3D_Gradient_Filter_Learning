@@ -22,6 +22,7 @@ from skimage.measure import compare_psnr
 C.argument_parse()
 determine_geometric_func()
 
+C.R = 4
 C.USE_PIXEL_TYPE = False
 
 def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
@@ -93,9 +94,9 @@ for file_idx, file in enumerate(file_list):
     print('\rProcessing ' + str(file_idx + 1) + '/' + str(len(file_list)) + ' image (' + file_name + ')')
 
     raw_image = nib.load(file).dataobj
-    crop_image = mod_crop(raw_image, R)
+    crop_image = mod_crop(raw_image, C.R)
     clipped_image = clip_image(crop_image)
-    slice_area = crop_slice(clipped_image, PATCH_SIZE // 2, R)
+    slice_area = crop_slice(clipped_image, PATCH_SIZE // 2, C.R)
 
     im_blank_LR = get_lr(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
     im_LR = im_blank_LR[slice_area]

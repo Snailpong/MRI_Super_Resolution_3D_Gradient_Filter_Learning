@@ -19,6 +19,7 @@ from util import *
 C.argument_parse()
 determine_geometric_func()
 
+C.R = 4
 C.USE_PIXEL_TYPE = False
 
 Q, V, finished_files = load_files()
@@ -66,10 +67,10 @@ G_WEIGHT = get_normalized_gaussian()
 # for i in range(C.Q_COHERENCE - 1):
 #     cohe[i] = quantization[floor((i+1) * patchNumber / C.Q_COHERENCE), 1]
 
-stre[0] = 0.00075061
-stre[1] = 0.00297238
-cohe[0] = 0.42785409
-cohe[1] = 0.61220482
+stre[0] = 0.00051082
+stre[1] = 0.00161142
+cohe[0] = 0.51589204
+cohe[1] = 0.67320932
 
 print(stre, cohe)
 
@@ -98,7 +99,7 @@ for file_idx, file in enumerate(file_list):
 
     Q, V, mark = train_qv(im_LR, im_HR, im_GX, im_GY, im_GZ, G_WEIGHT, stre, cohe, Q, V, mark)  # get Q, V of each patch
 
-    if file_idx + 1 == 10:
+    if file_idx + 1 == 100:
         break
 
     finished_files.append(file)
