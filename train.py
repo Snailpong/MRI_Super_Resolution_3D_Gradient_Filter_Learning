@@ -59,7 +59,18 @@ for file_idx, image in enumerate(file_list):
     if patchNumber > instance / 2:
         break
 
+# uniform quantization of patches, get the optimized strength and coherence boundaries
+quantization = quantization[0:patchNumber, :]
+quantization = np.sort(quantization, axis=0)
+for i in range(C.Q_STRENGTH - 1):
+    stre[i] = quantization[floor((i+1) * patchNumber / C.Q_STRENGTH), 0]
+for i in range(C.Q_COHERENCE - 1):
+    cohe[i] = quantization[floor((i+1) * patchNumber / C.Q_COHERENCE), 1]
 
+# stre[0] = 0.00075061
+# stre[1] = 0.00297238
+# cohe[0] = 0.42785409
+# cohe[1] = 0.61220482
 
 # stre[0] = 0.0010374
 # stre[1] = 0.0031624

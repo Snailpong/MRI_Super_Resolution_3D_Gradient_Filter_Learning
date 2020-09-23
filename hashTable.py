@@ -58,7 +58,7 @@ def determine_geometric_func():
 def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, instance):
     H, W, D = im_GX.shape
     for i1 in range(H - 2 * C.PATCH_HALF):
-        print(i1, patchNumber, quantization.sum(), quantization.max())
+        print(i1, patchNumber)
         for j1 in range(W - 2 * C.PATCH_HALF):
             for k1 in range(D - 2 * C.PATCH_HALF):
 
@@ -67,7 +67,6 @@ def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, i
 
                 idx1 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
                         slice(k1+1, (k1 + 2 * C.GRADIENT_HALF + 2)))
-                patch = im[idx1]
 
                 patchX = im_GX[idx1]
                 patchY = im_GY[idx1]

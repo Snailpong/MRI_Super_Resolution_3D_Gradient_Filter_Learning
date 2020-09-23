@@ -42,6 +42,7 @@ def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
 
     return result_image
 
+
 # @njit(parallel=True)
 @njit
 def make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
@@ -52,8 +53,8 @@ def make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h
                     slice(k1, (k1 + 2 * PATCH_HALF + 1)))
             patch = im_LR[idx1]
 
-            if im_LR[i1 + C.GRADIENT_HALF, j1 + C.GRADIENT_HALF, k1 + C.GRADIENT_HALF] == 0:
-                    continue
+            if im_LR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
+                continue
 
             np.where(patch == 0, patch[PATCH_HALF, PATCH_HALF, PATCH_HALF], patch)
 
@@ -75,14 +76,6 @@ def make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h
 
     return result_image
 
-current_hour = time.strftime('%m%d%H', time.localtime(time.time()))
-# current_hour = '080413'
-
-testPath = './test'
-file_list = make_dataset(testPath)
-
-# Preprocessing normalized Gaussian matrix W for hashkey calculation
-G_WEIGHT = get_normalized_gaussian()
 
 current_hour = time.strftime('%m%d%H', time.localtime(time.time()))
 result_dir = './result/{}/'.format(current_hour)

@@ -34,10 +34,12 @@ def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
 
     return output
 
+
 def clip_image(im):
     clip_value = np.sort(im.ravel())[int(np.prod(im.shape) * 0.999)]
     im = np.clip(im, 0, clip_value)
     return im
+
 
 @njit(parallel=True)
 def ct_descriptor(im):
@@ -60,6 +62,7 @@ def ct_descriptor(im):
                 Census[i, j, k] = cen
     Census = Census / 26
     return Census, CT
+
 
 @njit
 def blend_weight(LR, HR, ctLR, ctHR, threshold = 10):
@@ -84,12 +87,14 @@ def blend_weight(LR, HR, ctLR, ctHR, threshold = 10):
                     blended[i, j, k] = HR[i, j, k]
     return blended
 
+
 @njit
 def blend_image(LR, HR, threshold = 10):
     censusLR, ctLR = ct_descriptor(LR)
     censusHR, ctHR = ct_descriptor(HR)
     blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended
+
 
 @njit
 def blend_image2(LR, SR, threshold = 10):
@@ -110,6 +115,7 @@ def blend_image2(LR, SR, threshold = 10):
     # blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended
 
+
 @njit
 def blend_image3(LR, SR, threshold = 3):
     H, W, D = LR.shape
@@ -127,6 +133,7 @@ def blend_image3(LR, SR, threshold = 3):
     # blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended
 
+
 def gaussian_3d_blur(input, ksize=(3,3,3), sigma=0.85):
     filter = gaussian_3d(ksize, sigma)
     output = convolve(input, filter)
@@ -143,16 +150,19 @@ def gaussian_3d(shape=(3,3,3), sigma=0.85):
         h /= sumh
     return h
 
+
 def get_normalized_gaussian():
     weight = gaussian_3d((C.GRADIENT_SIZE, C.GRADIENT_SIZE, C.GRADIENT_SIZE))
     weight = np.diag(weight.ravel())
     weight = np.array(weight, dtype=np.float32)
     return weight
 
+
 def clipped_hr(hr):
     clipvalue = np.sort(hr.ravel())[int(np.prod(hr.shape) * 0.999)]
     hr = np.clip(hr, 0, clipvalue)
     return hr
+
 
 def normalization_hr(hr):
     hr = clipped_hr(hr)
