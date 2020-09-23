@@ -42,8 +42,8 @@ def load_files():
         QVF.close()
         print('Done', flush=True)
     else:
-        Q = np.zeros((C.Q_TOTAL, C.FILTER_VOL, C.FILTER_VOL))
-        V = np.zeros((C.Q_TOTAL, C.FILTER_VOL))
+        Q = np.zeros((C.Q_TOTAL, C.FILTER_VOL, C.FILTER_VOL), dtype=np.float64)
+        V = np.zeros((C.Q_TOTAL, C.FILTER_VOL), dtype=np.float64)
         finished_files = []
 
     return Q, V, finished_files
