@@ -111,10 +111,9 @@ def blend_image2(LR, SR, threshold = 10):
     return blended
 
 @njit
-def blend_image3(LR, SR, threshold = 10):
+def blend_image3(LR, SR, threshold = 3):
     H, W, D = LR.shape
     blended = SR.copy()
-    print(blended.shape)
     windowSize = 3
     C = np.int((windowSize - 1) / 2)
 
@@ -123,7 +122,7 @@ def blend_image3(LR, SR, threshold = 10):
             for k in range(C, D - C):
                 std_sr = np.std(LR[i-C: i+C+1, j-C: j+C+1, k-C: k+C+1].ravel())
 
-                if abs(LR[i, j, k] - SR[i, j, k]) > std_sr * 3:
+                if abs(LR[i, j, k] - SR[i, j, k]) > std_sr * threshold:
                     blended[i, j, k] = LR[i, j, k]
     # blended = blend_weight(LR, HR, ctLR, ctHR, threshold)
     return blended
@@ -133,8 +132,6 @@ def gaussian_3d_blur(input, ksize=(3,3,3), sigma=0.85):
     output = convolve(input, filter)
     return output
 
-def add_weight(i1, w1, i2, w2, bias):
-    return np.dot(i1, w1) + np.dot(i2, w2) + bias
 
 def gaussian_3d(shape=(3,3,3), sigma=0.85):
     m,n,o = [(ss-1.)/2. for ss in shape]
