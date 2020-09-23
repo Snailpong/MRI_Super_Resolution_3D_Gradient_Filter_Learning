@@ -1,11 +1,7 @@
-import glob
 import time
-import random
 
 import cupy as cp
 import numpy as np
-
-import nibabel as nib
 
 import filter_constant as C
 
@@ -23,12 +19,11 @@ C.R = 4
 C.USE_PIXEL_TYPE = False
 
 Q, V, finished_files = load_files()
-mark = np.zeros((C.R ** 3, C.Q_TOTAL))
 
 stre = np.zeros((C.Q_STRENGTH - 1))  # Strength boundary
 cohe = np.zeros((C.Q_COHERENCE - 1)) # Coherence boundary
 
-trainPath = './train'
+trainPath = './train/'
 
 file_list = make_dataset(trainPath)
 C.TRAIN_FILE_MAX = min(C.TRAIN_FILE_MAX, len(file_list))
@@ -77,17 +72,25 @@ for i in range(C.Q_COHERENCE - 1):
 # cohe[0] = 0.44441757
 # cohe[1] = 0.62840797
 
-print(stre, cohe)
+    im_HR, im_LR = get_train_image(file)
+
+    quantization, patchNumber = quantization_border(im_LR, patchNumber, quantization)  # get the strength and coherence of each patch
+    if patchNumber > C.TOTAL_SAMPLE_BORDER / 2:
+        break
 
 Q = cp.array(Q)
 V = cp.array(V)
 
+# stre[0] = 0.00075061
+# stre[1] = 0.00297238
+# cohe[0] = 0.42785409
+# cohe[1] = 0.61220482
 
-start = time.time()
+print(stre, cohe)
 
 for file_idx, file in enumerate(file_list):
     file_name = file.split('\\')[-1].split('.')[0]
-    filestart = time.time()
+    file_timer = time.time()
 
     if file in finished_files:
         continue
@@ -119,10 +122,5 @@ Q = Q.get()
 V = V.get()
 
 save_qv(Q, V, finished_files)
+save_boundary(stre, cohe)
 compute_h(Q, V)
-
-with open("./arrays/Qfactor_str" + str(C.R), "wb") as sp:
-    pickle.dump(stre, sp)
-
-with open("./arrays/Qfactor_coh" + str(C.R), "wb") as cp:
-    pickle.dump(cohe, cp)

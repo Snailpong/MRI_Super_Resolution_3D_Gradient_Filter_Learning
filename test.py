@@ -27,7 +27,8 @@ C.USE_PIXEL_TYPE = False
 # C.H_FILE = './arrays/h_3'
 
 
-def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
+
+def make_image(im_LR, stre, cohe, h):
     H = im_LR.shape[0]
     result_image = im_LR.copy()
     # im_LR = np.array(im_LR, dtype=np.float64)
@@ -36,7 +37,7 @@ def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
     for i1 in range(H - 2 * PATCH_HALF):
         print('\r{} / {}    {} s'.format(i1, H - 2 * PATCH_HALF, ((time.time() - timer) * 100 // 10) / 10), end='')
         timer = time.time()
-        result_image = make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h)
+        result_image = make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, stre, cohe, h)
 
     result_image = np.clip(result_image, 0, 1)
 
@@ -68,7 +69,7 @@ def make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h
             patchY = im_GY[idx2]
             patchZ = im_GZ[idx2]
 
-            angle_p, angle_t, lamda, u = get_hash(patchX, patchY, patchZ, w, stre, cohe)
+            angle_p, angle_t, lamda, u = get_hash(patchX, patchY, patchZ, stre, cohe)
             j = int(angle_p * Q_STRENGTH * Q_COHERENCE * Q_ANGLE_T + angle_t * Q_STRENGTH * Q_COHERENCE + lamda * Q_COHERENCE + u)
 
             patch1 = patch.ravel()
@@ -150,6 +151,7 @@ for file_idx, file in enumerate(file_list):
     # if file_idx == 0:
     #     break
 
-
+    if file_idx == 0:
+        break
 
 print("Test is off")
