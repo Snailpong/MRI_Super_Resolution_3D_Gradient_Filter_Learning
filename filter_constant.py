@@ -13,13 +13,8 @@ PATCH_HALF = PATCH_SIZE // 2
 GRADIENT_SIZE = 9
 GRADIENT_HALF = GRADIENT_SIZE // 2
 
-Q_LAMBDA1_SPLIT = np.array([0.0001, 0.001])
-Q_TRACE_SPLIT = np.array([0.0001, 0.001])
-Q_COH2_SPLIT = np.array([0.25, 0.5])
-Q_FA_SPLIT = np.array([0.05, 0.1])
-
-Q_STRENGTH = 3      # Do not edit!
-Q_COHERENCE = 3     # Do not edit!
+Q_STRENGTH = 3
+Q_COHERENCE = 3
 
 R = 2
 

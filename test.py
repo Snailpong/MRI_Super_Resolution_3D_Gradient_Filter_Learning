@@ -78,10 +78,8 @@ current_hour = time.strftime('%m%d%H', time.localtime(time.time()))
 result_dir = './result/{}/'.format(current_hour)
 if not os.path.isdir(result_dir):
     os.mkdir(result_dir)
-# current_hour = '080413'
 
-testPath = './test'
-file_list = make_dataset(testPath)
+file_list = make_dataset('./test')
 
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
 G_WEIGHT = get_normalized_gaussian()

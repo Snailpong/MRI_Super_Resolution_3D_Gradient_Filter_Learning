@@ -26,9 +26,7 @@ Q, V, finished_files = load_files()
 stre = np.zeros((C.Q_STRENGTH - 1))  # Strength boundary
 cohe = np.zeros((C.Q_COHERENCE - 1)) # Coherence boundary
 
-trainPath = './train'
-
-file_list = make_dataset(trainPath)
+file_list = make_dataset('./train')
 C.TRAIN_FILE_MAX = min(C.TRAIN_FILE_MAX, len(file_list))
 
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
@@ -101,7 +99,7 @@ for file_idx, file in enumerate(file_list):
     im_LR = im_blank_LR[slice_area]
     im_HR = clipped_image[slice_area] / clipped_image.max()
 
-    Q, V = train_qv(im_LR, im_HR, G_WEIGHT, stre, cohe, Q, V, mark)  # get Q, V of each patch
+    Q, V = train_qv(im_LR, im_HR, G_WEIGHT, stre, cohe, Q, V)  # get Q, V of each patch
     
     print(' ' * 30, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
