@@ -23,8 +23,6 @@ C.argument_parse()
 determine_geometric_func()
 
 C.R = 4
-C.USE_PIXEL_TYPE = False
-# C.H_FILE = './arrays/h_3'
 
 
 def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):

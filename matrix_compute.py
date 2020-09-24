@@ -3,7 +3,7 @@ import cupy as cp
 import math
 import time
 
-from numba import jit, njit, cuda, prange, vectorize
+from numba import njit
 
 from scipy.sparse.linalg import cg
 
@@ -63,5 +63,5 @@ def compute_h(Q, V):
                 h[j] = np.linalg.inv(Q[j]).dot(V[j])  # Eq.2
                 break
 
-    np.save(C.H_FILE, h)
+    np.save('./arrays/h_{}'.format(C.R), h)
     print('Computing H is off in {} minutes'.format((time.time() - start) // 60))

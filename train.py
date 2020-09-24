@@ -20,10 +20,8 @@ C.argument_parse()
 determine_geometric_func()
 
 C.R = 4
-C.USE_PIXEL_TYPE = False
 
 Q, V, finished_files = load_files()
-mark = np.zeros((C.R ** 3, C.Q_TOTAL))
 
 stre = np.zeros((C.Q_STRENGTH - 1))  # Strength boundary
 cohe = np.zeros((C.Q_COHERENCE - 1)) # Coherence boundary
@@ -101,10 +99,9 @@ for file_idx, file in enumerate(file_list):
 
     im_blank_LR = get_lr(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
     im_LR = im_blank_LR[slice_area]
-    im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
     im_HR = clipped_image[slice_area] / clipped_image.max()
 
-    Q, V, mark = train_qv(im_LR, im_HR, im_GX, im_GY, im_GZ, G_WEIGHT, stre, cohe, Q, V, mark)  # get Q, V of each patch
+    Q, V = train_qv(im_LR, im_HR, G_WEIGHT, stre, cohe, Q, V, mark)  # get Q, V of each patch
     
     print(' ' * 30, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 

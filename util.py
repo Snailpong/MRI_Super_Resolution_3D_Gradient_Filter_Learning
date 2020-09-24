@@ -23,14 +23,17 @@ def ask_save_qv(Q, V, finished_files):
     except TimeoutError as e:
         pass
 
+
 def save_qv(Q, V, finished_files):
     print('\rSaving QVF...', end='', flush=True)
-    np.savez(C.QVF_FILE, Q=Q, V=V, finished_files=np.array(finished_files))
+    np.savez('./arrays/QVF_{}'.format(C.R), Q=Q, V=V, finished_files=np.array(finished_files))
+
 
 def init_buckets():
     patchS = [[] for j in range(C.Q_TOTAL)]
     xS = [[] for j in range(C.Q_TOTAL)]
     return patchS, xS
+
 
 def load_files():
     if os.path.isfile('{}.npz'.format(C.QVF_FILE)):
@@ -47,6 +50,7 @@ def load_files():
         finished_files = []
 
     return Q, V, finished_files
+
 
 # Original Code Source : https://greenfishblog.tistory.com/257
 def input_timer(prompt, timeout_sec):

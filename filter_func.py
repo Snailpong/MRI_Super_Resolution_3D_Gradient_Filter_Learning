@@ -156,14 +156,3 @@ def get_normalized_gaussian():
     weight = np.diag(weight.ravel())
     weight = np.array(weight, dtype=np.float32)
     return weight
-
-
-def clipped_hr(hr):
-    clipvalue = np.sort(hr.ravel())[int(np.prod(hr.shape) * 0.999)]
-    hr = np.clip(hr, 0, clipvalue)
-    return hr
-
-
-def normalization_hr(hr):
-    hr = clipped_hr(hr)
-    return hr/hr.max()
