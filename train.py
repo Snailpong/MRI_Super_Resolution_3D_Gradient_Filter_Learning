@@ -67,10 +67,10 @@ for i in range(C.Q_STRENGTH - 1):
 for i in range(C.Q_COHERENCE - 1):
     cohe[i] = quantization[floor((i+1) * patchNumber / C.Q_COHERENCE), 1]
 
-# stre[0] = 0.00075061
-# stre[1] = 0.00297238
-# cohe[0] = 0.42785409
-# cohe[1] = 0.61220482
+# stre[0] = 0.00051082
+# stre[1] = 0.00161142
+# cohe[0] = 0.51589204
+# cohe[1] = 0.67320932
 
 # stre[0] = 0.0010374
 # stre[1] = 0.0031624

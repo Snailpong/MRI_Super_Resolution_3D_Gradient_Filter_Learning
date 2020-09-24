@@ -43,7 +43,6 @@ def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
     return result_image
 
 
-# @njit(parallel=True)
 @njit
 def make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
     H, W, D = im_LR.shape

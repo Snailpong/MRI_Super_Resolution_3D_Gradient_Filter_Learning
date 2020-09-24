@@ -31,11 +31,11 @@ def get_sampled_point_list(array):
 
     return sampled_list
 
-def crop_slice(array, padding, R):
+def crop_slice(array, padding, factor):
     for i in range(padding, array.shape[0] - padding):
         if not np.all(array[i, :, :] == 0):
             x_use1 = i - padding
-            x_use1 = x_use1 - (x_use1 % R)
+            x_use1 = x_use1 - (x_use1 % factor)
             break
     for i in reversed(range(padding, array.shape[0] - padding)):
         if not np.all(array[i, :, :] == 0):
@@ -44,7 +44,7 @@ def crop_slice(array, padding, R):
     for i in range(padding, array.shape[1] - padding):
         if not np.all(array[:, i, :] == 0):
             y_use1 = i - padding
-            y_use1 = y_use1 - (y_use1 % R)
+            y_use1 = y_use1 - (y_use1 % factor)
             break
     for i in reversed(range(padding, array.shape[1] - padding)):
         if not np.all(array[:, i, :] == 0):
@@ -53,7 +53,7 @@ def crop_slice(array, padding, R):
     for i in range(padding, array.shape[2] - padding):
         if not np.all(array[:, :, i] == 0):
             z_use1 = i - padding
-            z_use1 = z_use1 - (z_use1 % R)
+            z_use1 = z_use1 - (z_use1 % factor)
             break
     for i in reversed(range(padding, array.shape[2] - padding)):
         if not np.all(array[:, :, i] == 0):
