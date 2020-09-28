@@ -17,9 +17,7 @@ from matrix_compute import *
 from util import *
 
 C.argument_parse()
-determine_geometric_func()
-
-C.R = 4
+C.R = 2
 
 Q, V, finished_files = load_files()
 

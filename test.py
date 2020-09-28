@@ -20,9 +20,7 @@ from matrix_compute import *
 from skimage.measure import compare_psnr
 
 C.argument_parse()
-determine_geometric_func()
-
-C.R = 4
+C.R = 2
 
 
 def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
@@ -142,8 +140,8 @@ for file_idx, file in enumerate(file_list):
     area = np.nonzero(im_HR)
     print(compare_psnr(im_HR[area], im_LR[area]), compare_psnr(im_HR[area], im_result[area]))
 
-    # if file_idx == 0:
-    #     break
+    if file_idx == 0:
+        break
 
 
 

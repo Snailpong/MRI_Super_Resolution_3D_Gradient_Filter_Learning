@@ -33,14 +33,14 @@ def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, i
                 patchNumber += 1
     return quantization, patchNumber
 
-@njit(nopython=True)
-def arrays_equal(a, b):
-    if a.shape != b.shape:
-        return False
-    for ai, bi in zip(a.flat, b.flat):
-        if ai != bi:
-            return False
-    return True
+@njit
+def get_lamda_u(l1, l2, l3):
+    lamda = l1
+    # lamda = l1 + l2 + l3
+    u = (sqrt(l1) - sqrt(l2)) / (sqrt(l1) + sqrt(l2) + 1e-16)
+    # u = sqrt(((l1 - l2) ** 2 + (l2 - l3) ** 2 + (l3 - l1) ** 2) / (2 * (l1 ** 2 + l2 ** 2 + l3 ** 2)))
+    return lamda, u
+
 
 @njit
 def get_hash(patchX, patchY, patchZ, weight, stre, cohe):
@@ -49,8 +49,6 @@ def get_hash(patchX, patchY, patchZ, weight, stre, cohe):
     w, v = np.linalg.eig(x)
 
     index = w.argsort()[::-1]
-    # [l1, l2, l3] = np.abs(w[index])
-    # v = np.real(v[:, index])
     [l1, l2, l3] = w[index]
     v = v[:, index]
 
@@ -64,11 +62,7 @@ def get_hash(patchX, patchY, patchZ, weight, stre, cohe):
     angle_p = min(max(int(angle_p / (pi / C.Q_ANGLE_P)), 0), C.Q_ANGLE_P - 1)
     angle_t = min(max(int(angle_t / (pi / C.Q_ANGLE_T)), 0), C.Q_ANGLE_T - 1)
 
-    lamda = l1
-    u = (sqrt(l1) - sqrt(l2)) / (sqrt(l1) + sqrt(l2) + 1e-16)
-
-    # lamda = l1 + l2 + l3
-    # u = sqrt(((l1 - l2) ** 2 + (l2 - l3) ** 2 + (l3 - l1) ** 2) / (2 * (l1 ** 2 + l2 ** 2 + l3 ** 2)))
+    lamda, u = get_lamda_u(l1, l2, l3)
 
     lamda = np.searchsorted(stre, lamda)
     u = np.searchsorted(cohe, u)
@@ -84,11 +78,7 @@ def grad(patchX, patchY, patchZ, weight):
     index = w.argsort()[::-1]
     [l1, l2, l3] = w[index]
 
-    # lamda = l1 + l2 + l3
-    # u = sqrt(((l1 - l2) ** 2 + (l2 - l3) ** 2 + (l3 - l1) ** 2) / (2 * (l1 ** 2 + l2 ** 2 + l3 ** 2)))
-
-    lamda = l1
-    u = (sqrt(l1) - sqrt(l2)) / (sqrt(l1) + sqrt(l2) + 1e-16)
+    lamda, u = get_lamda_u(l1, l2, l3)
 
     return lamda, u
 
@@ -124,7 +114,8 @@ def train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V):
 
         for i1, j1, k1 in point_list1:
 
-            if np.any(im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0):
+            # if np.any(im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0):
+            if im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
                 continue
 
             idx1 = (slice(i1, (i1 + 2 * C.PATCH_HALF + 1)), slice(j1, (j1 + 2 * C.PATCH_HALF + 1)),
