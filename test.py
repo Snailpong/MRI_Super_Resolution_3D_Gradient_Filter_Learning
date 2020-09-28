@@ -29,8 +29,8 @@ def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
     # im_LR = np.array(im_LR, dtype=np.float64)
 
     timer = time.time()
-    for i1 in range(H - 2 * PATCH_HALF):
-        print('\r{} / {}    {} s'.format(i1, H - 2 * PATCH_HALF, ((time.time() - timer) * 100 // 10) / 10), end='')
+    for i1 in range(C.PATCH_HALF, H - C.PATCH_HALF):
+        print('\r{} / {}    {} s'.format(i1, H - C.PATCH_HALF, ((time.time() - timer) * 100 // 10) / 10), end='')
         timer = time.time()
         result_image = make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h)
 
@@ -42,32 +42,35 @@ def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
 @njit
 def make_image_yz(i1, result_image, im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
     H, W, D = im_LR.shape
-    for j1 in range(W - 2 * PATCH_HALF):
-        for k1 in range(D - 2 * PATCH_HALF):
-            idx1 = (slice(i1, (i1 + 2 * PATCH_HALF + 1)), slice(j1, (j1 + 2 * PATCH_HALF + 1)),
-                    slice(k1, (k1 + 2 * PATCH_HALF + 1)))
-            patch = im_LR[idx1]
+    
+    for j1 in range(C.PATCH_HALF, W - C.PATCH_HALF):
+        for k1 in range(C.PATCH_HALF, D - C.PATCH_HALF):
+            idxp = (slice(i1 - C.PATCH_HALF, i1 + C.PATCH_HALF + 1),
+                    slice(j1 - C.PATCH_HALF, j1 + C.PATCH_HALF + 1),
+                    slice(k1 - C.PATCH_HALF, k1 + C.PATCH_HALF + 1))
+            patch = im_LR[idxp]
 
-            if im_LR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
+            if im_LR[i1, j1, k1] == 0:
                 continue
 
-            np.where(patch == 0, patch[PATCH_HALF, PATCH_HALF, PATCH_HALF], patch)
+            np.where(patch == 0, patch[C.PATCH_HALF, C.PATCH_HALF, C.PATCH_HALF], patch)
 
             # if np.any(patch == 0):
             #     patch[np.where(patch == 0)] = patch[PATCH_HALF, PATCH_HALF, PATCH_HALF]
 
-            idx2 = (slice(i1+1, (i1 + 2 * GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * GRADIENT_HALF + 2)),
-                    slice(k1+1, (k1 + 2 * GRADIENT_HALF + 2)))
+            idxg = (slice(i1 - C.GRADIENT_HALF, i1 + C.GRADIENT_HALF + 1),
+                    slice(j1 - C.GRADIENT_HALF, j1 + C.GRADIENT_HALF + 1),
+                    slice(k1 - C.GRADIENT_HALF, k1 + C.GRADIENT_HALF + 1))
 
-            patchX = im_GX[idx2]
-            patchY = im_GY[idx2]
-            patchZ = im_GZ[idx2]
+            patchX = im_GX[idxg]
+            patchY = im_GY[idxg]
+            patchZ = im_GZ[idxg]
 
             angle_p, angle_t, lamda, u = get_hash(patchX, patchY, patchZ, w, stre, cohe)
-            j = int(angle_p * Q_STRENGTH * Q_COHERENCE * Q_ANGLE_T + angle_t * Q_STRENGTH * Q_COHERENCE + lamda * Q_COHERENCE + u)
+            j = int(angle_p * C.Q_STRENGTH * C.Q_COHERENCE * C.Q_ANGLE_T + angle_t * C.Q_STRENGTH * C.Q_COHERENCE + lamda * C.Q_COHERENCE + u)
 
             patch1 = patch.ravel()
-            result_image[i1 + PATCH_HALF, j1 + PATCH_HALF, k1 + PATCH_HALF] = np.dot(patch1, h[j])
+            result_image[i1, j1, k1] = np.dot(patch1, h[j])
 
     return result_image
 
@@ -104,7 +107,7 @@ for file_idx, file in enumerate(file_list):
     raw_image = nib.load(file).dataobj
     crop_image = mod_crop(raw_image, C.R)
     clipped_image = clip_image(crop_image)
-    slice_area = crop_slice(clipped_image, PATCH_SIZE // 2, C.R)
+    slice_area = crop_slice(clipped_image, C.PATCH_SIZE // 2, C.R)
 
     im_blank_LR = get_lr(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
     im_LR = im_blank_LR[slice_area]

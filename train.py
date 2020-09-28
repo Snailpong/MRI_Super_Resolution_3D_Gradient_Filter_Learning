@@ -111,7 +111,7 @@ for file_idx, file in enumerate(file_list):
 Q = Q.get()
 V = V.get()
 
-save_qv(Q, V, finished_files)
+# save_qv(Q, V, finished_files)
 compute_h(Q, V)
 
 with open("./arrays/Qfactor_str" + str(C.R), "wb") as sp:

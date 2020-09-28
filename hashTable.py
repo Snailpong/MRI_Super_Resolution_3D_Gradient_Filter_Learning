@@ -12,20 +12,21 @@ import filter_constant as C
 # @njit
 def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, instance):
     H, W, D = im_GX.shape
-    for i1 in range(H - 2 * C.PATCH_HALF):
+    for i1 in range(C.PATCH_HALF, H - C.PATCH_HALF):
         print(i1, patchNumber)
-        for j1 in range(W - 2 * C.PATCH_HALF):
-            for k1 in range(D - 2 * C.PATCH_HALF):
+        for j1 in range(C.PATCH_HALF, W - C.PATCH_HALF):
+            for k1 in range(C.PATCH_HALF, D - C.PATCH_HALF):
 
-                if random.random() > 0.2 or np.any(im[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0):
+                if random.random() > 0.2 or np.any(im[i1, j1, k1] == 0):
                     continue
 
-                idx1 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
-                        slice(k1+1, (k1 + 2 * C.GRADIENT_HALF + 2)))
+                idxg = (slice(i1 - C.GRADIENT_HALF, i1 + C.GRADIENT_HALF + 1),
+                        slice(j1 - C.GRADIENT_HALF, j1 + C.GRADIENT_HALF + 1),
+                        slice(k1 - C.GRADIENT_HALF, k1 + C.GRADIENT_HALF + 1))
 
-                patchX = im_GX[idx1]
-                patchY = im_GY[idx1]
-                patchZ = im_GZ[idx1]
+                patchX = im_GX[idxg]
+                patchY = im_GY[idxg]
+                patchZ = im_GZ[idxg]
                 strength, coherence = grad(patchX, patchY, patchZ, w)
 
                 quantization[patchNumber, 0] = strength
@@ -84,15 +85,13 @@ def grad(patchX, patchY, patchZ, weight):
 
 def train_qv(im_LR, im_HR, w, stre, cohe, Q, V):
     im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
-    # for t in range(C.R ** 3):
-    #     Q, V, mark = train_qv_type(t, im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V, mark)
     Q, V= train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V)
     return Q, V
 
 
 def init_buckets(Q_TOTAL):
-    patchS = [[] for j in range(Q_TOTAL)]
-    xS = [[] for j in range(Q_TOTAL)]
+    patchS = [[] for j in range(C.Q_TOTAL)]
+    xS = [[] for j in range(C.Q_TOTAL)]
     return patchS, xS
 
 def chunk(lst, size):
@@ -102,8 +101,9 @@ def chunk(lst, size):
 def train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V):
     H, W, D = im_HR.shape
 
-    xyz_range = [[x, y, z] for x in range(H - 2 * C.PATCH_HALF) for y in range(W - 2 * C.PATCH_HALF) for z in
-                 range(D - 2 * C.PATCH_HALF)]
+    xyz_range = [[x, y, z] for x in range(C.PATCH_HALF, H - C.PATCH_HALF)
+                    for y in range(C.PATCH_HALF, W - C.PATCH_HALF)
+                    for z in range(C.PATCH_HALF, D - C.PATCH_HALF)]
     sample_range = random.sample(xyz_range, len(xyz_range) // C.TRAIN_DIV)
     point_list = chunk(sample_range, len(sample_range) // C.TRAIN_DIV + 1)
 
@@ -115,26 +115,28 @@ def train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V):
         for i1, j1, k1 in point_list1:
 
             # if np.any(im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0):
-            if im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF] == 0:
+            if im_HR[i1, j1, k1] == 0:
                 continue
 
-            idx1 = (slice(i1, (i1 + 2 * C.PATCH_HALF + 1)), slice(j1, (j1 + 2 * C.PATCH_HALF + 1)),
-                    slice(k1, (k1 + 2 * C.PATCH_HALF + 1)))
+            idxp = (slice(i1 - C.PATCH_HALF, i1 + C.PATCH_HALF + 1),
+                    slice(j1 - C.PATCH_HALF, j1 + C.PATCH_HALF + 1),
+                    slice(k1 - C.PATCH_HALF, k1 + C.PATCH_HALF + 1))
 
-            patch = im_LR[idx1]
+            patch = im_LR[idxp]
 
-            idx2 = (slice(i1+1, (i1 + 2 * C.GRADIENT_HALF + 2)), slice(j1+1, (j1 + 2 * C.GRADIENT_HALF + 2)),
-                    slice(k1+1, (k1 + 2 * C.GRADIENT_HALF + 2)))
+            idxg = (slice(i1 - C.GRADIENT_HALF, i1 + C.GRADIENT_HALF + 1),
+                    slice(j1 - C.GRADIENT_HALF, j1 + C.GRADIENT_HALF + 1),
+                    slice(k1 - C.GRADIENT_HALF, k1 + C.GRADIENT_HALF + 1))
 
-            patchX = im_GX[idx2]
-            patchY = im_GY[idx2]
-            patchZ = im_GZ[idx2]
+            patchX = im_GX[idxg]
+            patchY = im_GY[idxg]
+            patchZ = im_GZ[idxg]
 
             angle_p, angle_t, lamda, u = get_hash(patchX, patchY, patchZ, w, stre, cohe)
             j = int(angle_p * C.Q_STRENGTH * C.Q_COHERENCE * C.Q_ANGLE_T + angle_t * C.Q_STRENGTH * C.Q_COHERENCE + lamda * C.Q_COHERENCE + u)
 
             patch1 = patch.reshape(-1)
-            x1 = im_HR[i1 + C.PATCH_HALF, j1 + C.PATCH_HALF, k1 + C.PATCH_HALF]
+            x1 = im_HR[i1, j1, k1]
 
             patchS[j].append(patch1)
             xS[j].append(x1)
