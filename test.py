@@ -17,10 +17,9 @@ from get_lr import *
 from hashtable import *
 from matrix_compute import *
 
-from skimage.measure import compare_psnr
+from skimage.measure import compare_psnr, compare_ssim
 
 C.argument_parse()
-C.R = 2
 
 
 def make_image(im_LR, im_GX, im_GY, im_GZ, w, stre, cohe, h):
@@ -136,15 +135,36 @@ for file_idx, file in enumerate(file_list):
     # output_img2[slice_area] = im_blending
     # output_img2 = output_img2 * clipped_image.max()
     # ni_img2 = nib.Nifti1Image(output_img2, np.eye(4))
-    # nib.save(ni_img2, '{}/{}_{}_result_blend.nii.gz'.format(result_dir, file_name, current_hour))
+    # nib.save(ni_img2, '{}/{}_result_blend.nii.gz'.format(result_dir, file_name))
 
     print()
     print(compare_psnr(im_HR, im_LR), compare_psnr(im_HR, im_result))
-    area = np.nonzero(im_HR)
-    print(compare_psnr(im_HR[area], im_LR[area]), compare_psnr(im_HR[area], im_result[area]))
+    print(compare_ssim(im_HR, im_LR), compare_ssim(im_HR, im_result))
+    # area = np.nonzero(im_HR)
+    # print(compare_psnr(im_HR, im_LR), compare_psnr(im_HR, im_blending))
 
-    if file_idx == 0:
-        break
+    # downscaled_lr = zoom(clipped_image, 1.0 / C.R, order=2, prefilter=False)
+    # lr2 = np.clip(zoom(downscaled_lr, C.R, order=1), 0, clipped_image.max()) / clipped_image.max()
+    # lr2[np.where(clipped_image == 0)] = 0
+
+    # lr3 = np.clip(zoom(downscaled_lr, C.R, order=2), 0, clipped_image.max()) / clipped_image.max()
+    # lr3[np.where(clipped_image == 0)] = 0
+
+    # print(compare_psnr(im_HR, lr2[slice_area]), compare_psnr(im_HR, lr3[slice_area]))
+    # print()
+
+    # downscaled_lr = zoom(clipped_image, 1.0 / C.R, order=2)
+    # lr2 = np.clip(zoom(downscaled_lr, C.R, order=1), 0, clipped_image.max()) / clipped_image.max()
+    # lr2[np.where(clipped_image == 0)] = 0
+
+    # lr3 = np.clip(zoom(downscaled_lr, C.R, order=2), 0, clipped_image.max()) / clipped_image.max()
+    # lr3[np.where(clipped_image == 0)] = 0
+
+    # print(compare_psnr(im_HR, lr2[slice_area]), compare_psnr(im_HR, lr3[slice_area]))
+    # print()
+
+    #if file_idx == 0:
+        #break
 
 
 

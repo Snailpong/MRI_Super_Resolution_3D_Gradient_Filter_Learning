@@ -22,7 +22,6 @@ def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
     Ga3 = gaussian_3d_blur(Ga2, ksize, sigma * alpha)
     D3 = add_weight(G3, 1+r, Ga3, -r, 0)
 
-
     B1 = blend_image(input, D3)
     B1 = blend_image(input, B1)
     B2 = blend_image(B1, D2)
@@ -33,6 +32,10 @@ def dog_sharpener(input, sigma=0.85, alpha=1.414, r=15, ksize=(3,3,3)):
     output = np.clip(B3, 0, 1)
 
     return output
+
+
+def add_weight(im1, w1, im2, w2, b):
+    return im1 * w1 + im2 * w2 + b
 
 
 def clip_image(im):

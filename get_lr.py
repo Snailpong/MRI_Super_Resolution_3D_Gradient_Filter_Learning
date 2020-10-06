@@ -13,7 +13,7 @@ def get_lr(hr):
 
 def get_lr_interpolation(im):
     downscaled_lr = zoom(im, 1.0 / C.R, order=2, prefilter=False)
-    lr = np.clip(zoom(downscaled_lr, C.R, order=1, prefilter=False), 0, im.max())
+    lr = np.clip(zoom(downscaled_lr, C.R, order=2, prefilter=False), 0, im.max())
     lr[np.where(im == 0)] = 0
     return lr
 

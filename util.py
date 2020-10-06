@@ -24,9 +24,9 @@ def ask_save_qv(Q, V, finished_files):
         pass
 
 
-def save_qv(Q, V, finished_files):
+def save_qv(Q, V, finished_files, count):
     print('\rSaving QVF...', end='', flush=True)
-    np.savez('./arrays/QVF_{}'.format(C.R), Q=Q, V=V, finished_files=np.array(finished_files))
+    np.savez('./arrays/QVF_{}'.format(C.R), Q=Q, V=V, finished_files=np.array(finished_files), count=count)
 
 
 def init_buckets():
@@ -42,14 +42,16 @@ def load_files():
         Q = QVF['Q']
         V = QVF['V']
         finished_files = QVF['finished_files'].tolist()
+        count = QVF['count']
         QVF.close()
         print('Done', flush=True)
     else:
         Q = np.zeros((C.Q_TOTAL, C.FILTER_VOL, C.FILTER_VOL), dtype=np.float64)
         V = np.zeros((C.Q_TOTAL, C.FILTER_VOL), dtype=np.float64)
         finished_files = []
+        count = np.zeros(C.Q_TOTAL, dtype=int)
 
-    return Q, V, finished_files
+    return Q, V, finished_files, count
 
 
 # Original Code Source : https://greenfishblog.tistory.com/257

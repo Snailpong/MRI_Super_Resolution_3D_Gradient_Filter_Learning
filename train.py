@@ -17,9 +17,8 @@ from matrix_compute import *
 from util import *
 
 C.argument_parse()
-C.R = 2
 
-Q, V, finished_files = load_files()
+Q, V, finished_files, count = load_files()
 
 stre = np.zeros((C.Q_STRENGTH - 1))  # Strength boundary
 cohe = np.zeros((C.Q_COHERENCE - 1)) # Coherence boundary
@@ -56,32 +55,29 @@ for file_idx, image in enumerate(file_list):
 # uniform quantization of patches, get the optimized strength and coherence boundaries
 quantization = quantization[0:patchNumber, :]
 quantization = np.sort(quantization, axis=0)
+
 for i in range(C.Q_STRENGTH - 1):
     stre[i] = quantization[floor((i+1) * patchNumber / C.Q_STRENGTH), 0]
-for i in range(C.Q_COHERENCE - 1):
     cohe[i] = quantization[floor((i+1) * patchNumber / C.Q_COHERENCE), 1]
 
-# stre[0] = 0.00051082
-# stre[1] = 0.00161142
-# cohe[0] = 0.51589204
-# cohe[1] = 0.67320932
-
-# stre[0] = 0.0010374
-# stre[1] = 0.0031624
-# cohe[0] = 0.44441757
-# cohe[1] = 0.62840797
+# stre[0] = 0.00103732
+# stre[1] = 0.00316019
+# cohe[0] = 0.27704942
+# cohe[1] = 0.49028277
 
 print(stre, cohe)
 
 Q = cp.array(Q)
 V = cp.array(V)
 
-
 start = time.time()
 
 for file_idx, file in enumerate(file_list):
     file_name = file.split('\\')[-1].split('.')[0]
     filestart = time.time()
+
+    if file_idx >= 100:
+        break
 
     if file in finished_files:
         continue
@@ -97,21 +93,17 @@ for file_idx, file in enumerate(file_list):
     im_LR = im_blank_LR[slice_area]
     im_HR = clipped_image[slice_area] / clipped_image.max()
 
-    Q, V = train_qv(im_LR, im_HR, G_WEIGHT, stre, cohe, Q, V)  # get Q, V of each patch
+    Q, V, count = train_qv(im_LR, im_HR, G_WEIGHT, stre, cohe, Q, V, count)  # get Q, V of each patch
     
     print(' ' * 30, 'last', '%.1f' % ((time.time() - filestart) / 60), 'min', end='', flush=True)
 
     finished_files.append(file)
-
-    if file_idx + 1 == 25:
-        break
-
     # ask_save_qv(Q, V, finished_files)
 
 Q = Q.get()
 V = V.get()
 
-# save_qv(Q, V, finished_files)
+save_qv(Q, V, finished_files, count)
 compute_h(Q, V)
 
 with open("./arrays/Qfactor_str" + str(C.R), "wb") as sp:

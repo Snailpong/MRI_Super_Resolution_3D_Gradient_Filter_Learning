@@ -22,6 +22,7 @@ Q_TOTAL = Q_ANGLE_P * Q_ANGLE_T * Q_STRENGTH * Q_COHERENCE
 FILTER_VOL = PATCH_SIZE ** 3
 
 TRAIN_DIV = 3
+SAMPLE_RATE = 3
 SHARPEN = 'False'
 BLEND_THRESHOLD = 10
 
@@ -71,7 +72,7 @@ def argument_parse():
     PATCH_SIZE = int(args.filter_len)
     PATCH_HALF = PATCH_SIZE // 2
     GRADIENT_SIZE = int(args.grad_len)
-    GRAD_HALF = GRADIENT_SIZE // 2
+    GRADIENT_HALF = GRADIENT_SIZE // 2
     R = int(args.factor)
     Q_TOTAL = Q_ANGLE_P * Q_ANGLE_T * Q_STRENGTH * Q_COHERENCE
     FILTER_VOL = PATCH_SIZE ** 3

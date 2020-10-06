@@ -2,6 +2,7 @@ import numpy as np
 import cupy as cp
 import math
 import time
+from scipy.sparse.linalg import cg
 
 from numba import njit
 
@@ -54,14 +55,18 @@ def compute_h(Q, V):
     start = time.time()
     for j in range(C.Q_TOTAL):
         print('\r{} / {}'.format(j + 1, C.Q_TOTAL), end='')
-        while True:
-            if Q[j].sum() < 100:
-                break
-            if np.linalg.det(Q[j]) < 1:
-                Q[j] = Q[j] + np.eye(C.PATCH_SIZE ** 3) * Q[j].sum() * 0.000000005
-            else:
-                h[j] = np.linalg.inv(Q[j]).dot(V[j])  # Eq.2
-                break
+        # Q[j] = Q[j] + np.eye(C.PATCH_SIZE ** 3) * Q[j].sum() * 5e-9
+        # h[j] = np.linalg.inv(Q[j]).dot(V[j])  # Eq.2
+        h[j] = cg(Q[j], V[j], tol=1e-5)[0]
+        # while True:
+        #     if Q[j].sum() < 100:
+        #         break
+        #     if np.linalg.det(Q[j]) < 1:
+        #         print(j)
+        #         Q[j] = Q[j] + np.eye(C.PATCH_SIZE ** 3) * Q[j].sum() * 0.000000005
+        #     else:
+        #         h[j] = np.linalg.inv(Q[j]).dot(V[j])  # Eq.2
+        #         break
 
     np.save('./arrays/h_{}'.format(C.R), h)
     print('Computing H is off in {} minutes'.format((time.time() - start) // 60))

@@ -13,7 +13,8 @@ import filter_constant as C
 def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, instance):
     H, W, D = im_GX.shape
     for i1 in range(C.PATCH_HALF, H - C.PATCH_HALF):
-        print(i1, patchNumber)
+        # print(i1, quantization[0].max())
+        # print(i1, patchNumber)
         for j1 in range(C.PATCH_HALF, W - C.PATCH_HALF):
             for k1 in range(C.PATCH_HALF, D - C.PATCH_HALF):
 
@@ -38,8 +39,10 @@ def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, i
 def get_lamda_u(l1, l2, l3):
     lamda = l1
     # lamda = l1 + l2 + l3
-    u = (sqrt(l1) - sqrt(l2)) / (sqrt(l1) + sqrt(l2) + 1e-16)
+    # u = (sqrt(l1) - sqrt(l2)) / (sqrt(l1) + sqrt(l2) + 1e-16)
+    u = (sqrt(l1) - sqrt(l2) - sqrt(l3)) / (sqrt(l1) + sqrt(l2) + sqrt(l3))
     # u = sqrt(((l1 - l2) ** 2 + (l2 - l3) ** 2 + (l3 - l1) ** 2) / (2 * (l1 ** 2 + l2 ** 2 + l3 ** 2)))
+    # u = l1 / sqrt(l2 ** 2 + l3 ** 2)
     return lamda, u
 
 
@@ -63,6 +66,9 @@ def get_hash(patchX, patchY, patchZ, weight, stre, cohe):
     angle_p = min(max(int(angle_p / (pi / C.Q_ANGLE_P)), 0), C.Q_ANGLE_P - 1)
     angle_t = min(max(int(angle_t / (pi / C.Q_ANGLE_T)), 0), C.Q_ANGLE_T - 1)
 
+    # angle_p = min(max(int((angle_p + pi) / (2 * pi / C.Q_ANGLE_P)), 0), C.Q_ANGLE_P - 1)
+    # angle_t = min(max(int(angle_t / (pi / C.Q_ANGLE_T)), 0), C.Q_ANGLE_T - 1)
+
     lamda, u = get_lamda_u(l1, l2, l3)
 
     lamda = np.searchsorted(stre, lamda)
@@ -83,12 +89,6 @@ def grad(patchX, patchY, patchZ, weight):
 
     return lamda, u
 
-def train_qv(im_LR, im_HR, w, stre, cohe, Q, V):
-    im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
-    Q, V= train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V)
-    return Q, V
-
-
 def init_buckets(Q_TOTAL):
     patchS = [[] for j in range(C.Q_TOTAL)]
     xS = [[] for j in range(C.Q_TOTAL)]
@@ -98,13 +98,14 @@ def chunk(lst, size):
     return list(map(lambda x: lst[x * size:x * size + size], list(range(0, ceil(len(lst) / size)))))
 
 
-def train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V):
+def train_qv(im_LR, im_HR, w, stre, cohe, Q, V, count):
     H, W, D = im_HR.shape
+    im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
 
     xyz_range = [[x, y, z] for x in range(C.PATCH_HALF, H - C.PATCH_HALF)
                     for y in range(C.PATCH_HALF, W - C.PATCH_HALF)
                     for z in range(C.PATCH_HALF, D - C.PATCH_HALF)]
-    sample_range = random.sample(xyz_range, len(xyz_range) // C.TRAIN_DIV)
+    sample_range = random.sample(xyz_range, len(xyz_range) // C.SAMPLE_RATE)
     point_list = chunk(sample_range, len(sample_range) // C.TRAIN_DIV + 1)
 
     for sample_idx, point_list1 in enumerate(point_list):
@@ -122,12 +123,11 @@ def train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V):
                     slice(j1 - C.PATCH_HALF, j1 + C.PATCH_HALF + 1),
                     slice(k1 - C.PATCH_HALF, k1 + C.PATCH_HALF + 1))
 
-            patch = im_LR[idxp]
-
             idxg = (slice(i1 - C.GRADIENT_HALF, i1 + C.GRADIENT_HALF + 1),
                     slice(j1 - C.GRADIENT_HALF, j1 + C.GRADIENT_HALF + 1),
                     slice(k1 - C.GRADIENT_HALF, k1 + C.GRADIENT_HALF + 1))
 
+            patch = im_LR[idxp]
             patchX = im_GX[idxg]
             patchY = im_GY[idxg]
             patchZ = im_GZ[idxg]
@@ -140,6 +140,7 @@ def train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V):
 
             patchS[j].append(patch1)
             xS[j].append(x1)
+            count[j] += 1
 
         print('\t{} s'.format(((time.time() - timer) * 1000 // 10) / 100), end='', flush=True)
         timer = time.time()
@@ -148,8 +149,8 @@ def train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V):
             if len(xS[j]) != 0:
                 A = cp.array(patchS[j])
                 b = cp.array(xS[j]).reshape(-1, 1)
-                Q += cp.dot(A.T, A)
-                V += cp.dot(A.T, b).reshape(-1)
+                Q[j] += cp.dot(A.T, A)
+                V[j] += cp.dot(A.T, b).reshape(-1)
                 # Qa = cp.array(Q[j])
                 # Va = cp.array(V[j])
                 #
@@ -161,4 +162,4 @@ def train_qv_type(im_LR, im_HR, im_GX, im_GY, im_GZ, w, stre, cohe, Q, V):
 
         print('\tqv {} s'.format((time.time() - timer) * 100 // 10 / 10), end='', flush=True)
 
-    return Q, V
+    return Q, V, count
