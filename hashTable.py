@@ -66,9 +66,6 @@ def get_hash(patchX, patchY, patchZ, weight, stre, cohe):
     angle_p = min(max(int(angle_p / (pi / C.Q_ANGLE_P)), 0), C.Q_ANGLE_P - 1)
     angle_t = min(max(int(angle_t / (pi / C.Q_ANGLE_T)), 0), C.Q_ANGLE_T - 1)
 
-    # angle_p = min(max(int((angle_p + pi) / (2 * pi / C.Q_ANGLE_P)), 0), C.Q_ANGLE_P - 1)
-    # angle_t = min(max(int(angle_t / (pi / C.Q_ANGLE_T)), 0), C.Q_ANGLE_T - 1)
-
     lamda, u = get_lamda_u(l1, l2, l3)
 
     lamda = np.searchsorted(stre, lamda)

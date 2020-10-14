@@ -37,7 +37,7 @@ for file_idx, image in enumerate(file_list):
     print('' * 60, end='')
     print('\r Quantization: Processing '+ image.split('\\')[-1] + str(instance) + ' patches (' + str(100*patchNumber/instance) + '%)')
 
-    raw_image = nib.load(image).dataobj
+    raw_image = nib.load(image).get_fdata()
     crop_image = mod_crop(raw_image, C.R)
     clipped_image = clip_image(crop_image)
     slice_area = crop_slice(clipped_image, C.PATCH_SIZE // 2, C.R)

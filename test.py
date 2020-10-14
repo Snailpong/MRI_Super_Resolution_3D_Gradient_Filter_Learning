@@ -103,7 +103,7 @@ for file_idx, file in enumerate(file_list):
     print('\rProcessing ' + str(file_idx + 1) + '/' + str(len(file_list)) + ' image (' + file_name + ')' + str(time.time() - filestart))
     filestart = time.time()
 
-    raw_image = nib.load(file).dataobj
+    raw_image = nib.load(file).get_fdata()
     crop_image = mod_crop(raw_image, C.R)
     clipped_image = clip_image(crop_image)
     slice_area = crop_slice(clipped_image, C.PATCH_SIZE // 2, C.R)
