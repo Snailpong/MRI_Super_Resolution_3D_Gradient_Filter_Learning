@@ -67,6 +67,6 @@ def compute_h(Q, V):
         #     else:
         #         h[j] = np.linalg.inv(Q[j]).dot(V[j])  # Eq.2
         #         break
-
+    h = np.array(h, dtype=np.float32)
     np.save('./arrays/h_{}'.format(C.R), h)
     print('Computing H is off in {} minutes'.format((time.time() - start) // 60))

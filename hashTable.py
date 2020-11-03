@@ -13,8 +13,6 @@ import filter_constant as C
 def quantization_border(im, im_GX, im_GY, im_GZ, patchNumber, w, quantization, instance):
     H, W, D = im_GX.shape
     for i1 in range(C.PATCH_HALF, H - C.PATCH_HALF):
-        # print(i1, quantization[0].max())
-        # print(i1, patchNumber)
         for j1 in range(C.PATCH_HALF, W - C.PATCH_HALF):
             for k1 in range(C.PATCH_HALF, D - C.PATCH_HALF):
 

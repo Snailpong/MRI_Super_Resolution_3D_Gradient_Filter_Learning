@@ -29,22 +29,23 @@ C.TRAIN_FILE_MAX = min(C.TRAIN_FILE_MAX, len(file_list))
 # Preprocessing normalized Gaussian matrix W for hashkey calculation
 G_WEIGHT = get_normalized_gaussian()
 
-instance = 5000000                          # use 20000000 patches to get the Strength and coherence boundary
-patchNumber = 0                              # patch number has been used
-quantization = np.zeros((instance, 2))        # quantization boundary
+instance = 5000000
+patchNumber = 0
+quantization = np.zeros((instance, 2))
 for file_idx, image in enumerate(file_list):
     print('\r', end='')
     print('' * 60, end='')
     print('\r Quantization: Processing '+ image.split('\\')[-1] + str(instance) + ' patches (' + str(100*patchNumber/instance) + '%)')
 
-    raw_image = nib.load(image).get_fdata()
-    crop_image = mod_crop(raw_image, C.R)
-    clipped_image = clip_image(crop_image)
-    slice_area = crop_slice(clipped_image, C.PATCH_SIZE // 2, C.R)
+    raw_image = np.array(nib.load(image).get_fdata(), dtype=np.float32)
+    clipped_image = clip_image(raw_image)
+    im = mod_crop(clipped_image, C.R)
 
-    im_LR = get_lr(clipped_image)         # Prepare the cheap-upscaling images (optional: JPEG compression)
+    slice_area = crop_slice(im, C.PATCH_SIZE // 2, C.R)
 
-    im_blank_LR = get_lr(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
+    im_LR = get_lr(im)         # Prepare the cheap-upscaling images (optional: JPEG compression)
+
+    im_blank_LR = get_lr(im) / im.max()  # Prepare the cheap-upscaling images
     im_LR = im_blank_LR[slice_area]
     im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
 
@@ -84,14 +85,14 @@ for file_idx, file in enumerate(file_list):
 
     print('\rProcessing ' + str(file_idx + 1) + '/' + str(len(file_list)) + ' image (' + file_name + ')')
 
-    raw_image = nib.load(file).dataobj
-    crop_image = mod_crop(raw_image, C.R)
-    clipped_image = clip_image(crop_image)
-    slice_area = crop_slice(clipped_image, C.PATCH_HALF, C.R)
+    raw_image = np.array(nib.load(file).get_fdata(), dtype=np.float32)
+    clipped_image = clip_image(raw_image)
+    im = mod_crop(clipped_image, C.R)
+    slice_area = crop_slice(im, C.PATCH_HALF, C.R)
 
-    im_blank_LR = get_lr(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
+    im_blank_LR = get_lr(im) / im.max()  # Prepare the cheap-upscaling images
     im_LR = im_blank_LR[slice_area]
-    im_HR = clipped_image[slice_area] / clipped_image.max()
+    im_HR = im[slice_area] / im.max()
 
     Q, V, count = train_qv(im_LR, im_HR, G_WEIGHT, stre, cohe, Q, V, count)  # get Q, V of each patch
     
@@ -103,7 +104,7 @@ for file_idx, file in enumerate(file_list):
 Q = Q.get()
 V = V.get()
 
-save_qv(Q, V, finished_files, count)
+# save_qv(Q, V, finished_files, count)
 compute_h(Q, V)
 
 with open("./arrays/Qfactor_str" + str(C.R), "wb") as sp:

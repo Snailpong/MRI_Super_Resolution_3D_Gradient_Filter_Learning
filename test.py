@@ -103,31 +103,21 @@ for file_idx, file in enumerate(file_list):
     print('\rProcessing ' + str(file_idx + 1) + '/' + str(len(file_list)) + ' image (' + file_name + ')' + str(time.time() - filestart))
     filestart = time.time()
 
-    raw_image = nib.load(file).get_fdata()
-    crop_image = mod_crop(raw_image, C.R)
-    clipped_image = clip_image(crop_image)
-    slice_area = crop_slice(clipped_image, C.PATCH_SIZE // 2, C.R)
+    raw_image = np.array(nib.load(file).get_fdata(), dtype=np.float32)
+    clipped_image = clip_image(raw_image)
+    im = mod_crop(clipped_image, C.R)
+    slice_area = crop_slice(im, C.PATCH_SIZE // 2, C.R)
 
-    im_blank_LR = get_lr(clipped_image) / clipped_image.max()  # Prepare the cheap-upscaling images
+    im_HR = im[slice_area] / im.max()
+    im_blank_LR = get_lr(im) / im.max()  # Prepare the cheap-upscaling images
     im_LR = im_blank_LR[slice_area]
     im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
 
-    im_GX[np.where(im_LR == 0)] = 0
-    im_GY[np.where(im_LR == 0)] = 0
-    im_GZ[np.where(im_LR == 0)] = 0
-
-    im_HR = clipped_image[slice_area] / clipped_image.max()
-
     im_result = make_image(im_LR, im_GX, im_GY, im_GZ, G_WEIGHT, stre, cohe, h)
-    # im_blending = Blending2(im_LR, im_result)
-    # im_blending = blend_image(im_LR, im_result)
-    # im_blending = blend_image3(im_LR, im_result, 3.5)
-    # im_blending = Backprojection(imL, im_blending, 50) #Optional: Backprojection, which can slightly improve PSNR, especilly for large upscaling factor.
-    # im_blending = np.clip(im_blending, 0, 1)
 
     output_img = np.zeros(raw_image.shape)
     output_img[slice_area] = im_result
-    output_img = output_img * clipped_image.max()
+    output_img = output_img * im.max()
     ni_img = nib.Nifti1Image(output_img, np.eye(4))
     nib.save(ni_img, '{}/{}_result.nii.gz'.format(result_dir, file_name))
 
@@ -140,28 +130,6 @@ for file_idx, file in enumerate(file_list):
     print()
     print(compare_psnr(im_HR, im_LR), compare_psnr(im_HR, im_result))
     print(compare_ssim(im_HR, im_LR), compare_ssim(im_HR, im_result))
-    # area = np.nonzero(im_HR)
-    # print(compare_psnr(im_HR, im_LR), compare_psnr(im_HR, im_blending))
-
-    # downscaled_lr = zoom(clipped_image, 1.0 / C.R, order=2, prefilter=False)
-    # lr2 = np.clip(zoom(downscaled_lr, C.R, order=1), 0, clipped_image.max()) / clipped_image.max()
-    # lr2[np.where(clipped_image == 0)] = 0
-
-    # lr3 = np.clip(zoom(downscaled_lr, C.R, order=2), 0, clipped_image.max()) / clipped_image.max()
-    # lr3[np.where(clipped_image == 0)] = 0
-
-    # print(compare_psnr(im_HR, lr2[slice_area]), compare_psnr(im_HR, lr3[slice_area]))
-    # print()
-
-    # downscaled_lr = zoom(clipped_image, 1.0 / C.R, order=2)
-    # lr2 = np.clip(zoom(downscaled_lr, C.R, order=1), 0, clipped_image.max()) / clipped_image.max()
-    # lr2[np.where(clipped_image == 0)] = 0
-
-    # lr3 = np.clip(zoom(downscaled_lr, C.R, order=2), 0, clipped_image.max()) / clipped_image.max()
-    # lr3[np.where(clipped_image == 0)] = 0
-
-    # print(compare_psnr(im_HR, lr2[slice_area]), compare_psnr(im_HR, lr3[slice_area]))
-    # print()
 
     #if file_idx == 0:
         #break
