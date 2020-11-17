@@ -59,7 +59,7 @@
 ```
 
 
- ## Running
+## Running
  - Run following commmand to start training filters.
 
 ```
@@ -72,6 +72,16 @@ python train.py
 python test.py
 ```
 
- ## Code References
+
+## Result Visualization
+![Result](https://github.com/Snailpong/MRI_Super_Resolution_3D_Gradient_Filter_Learning/blob/master/result/sample_result.png)
+
+
+## Code References
   - https://github.com/JalaliLabUCLA/Jalali-Lab-Implementation-of-RAISR
   - https://github.com/movehand/raisr
+
+
+
+## License
+GNU General Public License 3.0 License
