@@ -43,9 +43,7 @@ for file_idx, image in enumerate(file_list):
 
     slice_area = crop_slice(im, C.PATCH_SIZE // 2, C.R)
 
-    im_LR = get_lr(im)         # Prepare the cheap-upscaling images (optional: JPEG compression)
-
-    im_blank_LR = get_lr(im) / im.max()  # Prepare the cheap-upscaling images
+    im_blank_LR = get_lr(im) / im.max()
     im_LR = im_blank_LR[slice_area]
     im_GX, im_GY, im_GZ = np.gradient(im_LR)  # Calculate the gradient images
 
@@ -60,11 +58,6 @@ quantization = np.sort(quantization, axis=0)
 for i in range(C.Q_STRENGTH - 1):
     stre[i] = quantization[floor((i+1) * patchNumber / C.Q_STRENGTH), 0]
     cohe[i] = quantization[floor((i+1) * patchNumber / C.Q_COHERENCE), 1]
-
-# stre[0] = 0.00103732
-# stre[1] = 0.00316019
-# cohe[0] = 0.27704942
-# cohe[1] = 0.49028277
 
 print(stre, cohe)
 
